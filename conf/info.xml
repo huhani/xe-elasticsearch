@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module version="0.2">
+	<title xml:lang="ko">ElasticSearch</title>
+	<description xml:lang="ko">ElasticSearch를 사용한 XE 게시글 검색 보조모듈
+	</description>
+	<version>1.0</version>
+	<date>2021-08-17</date>
+	<category>service</category>
+	<author email_address="root@://dnip.co.kr" link="http://dnip.co.kr">
+		<name xml:lang="ko">Huhani</name>
+	</author>
+</module>

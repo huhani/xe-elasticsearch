@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module>
+	<grants>
+		
+	</grants>
+	<actions>
+		        <action name="dispElasticsearchAdminModuleConfig" type="view" admin_index="true" />
+
+	</actions>
+</module>
