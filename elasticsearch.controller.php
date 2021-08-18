@@ -18,9 +18,13 @@ class elasticsearchController extends elasticsearch
         if($obj->search_target) {
             $oElasticSearchModel = getModel('elasticsearch');
             $list = $oElasticSearchModel->getDocumentList($obj, $obj->isExtraVars, $obj->columnList);
+            if($list) {
+                $obj->use_alternate_output = $list;
+            }
         }
 
 
+        return null;
     }
 
 

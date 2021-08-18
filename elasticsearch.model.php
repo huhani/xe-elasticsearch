@@ -39,19 +39,59 @@ class ElasticSearchClientConnector {
 class elasticsearchModel extends elasticsearch
 {
 
+    private static $host = "127.0.0.1";
+    private static $port = 9200;
+    private static $prefix = "sy";
+    private static $client = null;
+
     function init()
     {
     }
 
-    function getEncrypt() {
-        return new SuyongsoEnc();
+    public static function getElasticEngineClient() {
+        if(!self::$client) {
+            self::$client = new ElasticSearchClientConnector(self::$host, self::$port, self::$prefix);
+        }
+
+        return self::$client->getClient();
     }
 
-    function getElasticSearchClientConnector() {
-        return new ElasticSearchClientConnector("127.0.0.1", "9200", "sy");
+    public static function getElasticEnginePrefix() {
+        return self::$prefix;
     }
 
-    function getQuery($prefix ,$obj, $columnList) {
+    function getListOutputFromQueryResponse($result, $page, $list_count, $page_count) {
+        if(!$result) {
+            return null;
+        }
+
+        $hits = $result['hits'];
+        $result = $hits['hits'];
+        $total_count = $hits['total']['value'];
+        $total_page = max(1, ceil($total_count / $list_count));
+        $data = array();
+        $last_id = $total_count - (($page-1) * $list_count);
+        foreach($result as $each) {
+            $doc = new stdClass();
+            foreach($each['_source'] as $key=>$val) {
+                $doc->{$key} = $val;
+            }
+            $data[$last_id--] = $doc;
+        }
+        $page_navigation = new PageHandler($total_count, $total_page, $page, $page_count);
+
+        $output = new BaseObject();
+        $output->total_count = $total_count;
+        $output->total_page = $total_page;
+        $output->page = $page;
+        $output->data = $data;
+        $output->page_navigation = $page_navigation;
+
+        return $output;
+    }
+
+    function getDocumentFromDocumentSearch($obj, $columnList) {
+        $prefix = self::getElasticEnginePrefix();
         $module_srl = $obj->module_srl;
         $page = $obj->page;
         $list_count = $obj->list_count;
@@ -63,6 +103,9 @@ class elasticsearchModel extends elasticsearch
         $params = null;
         if($prefix) {
             $prefix .= "_";
+        }
+        if(!$page) {
+            $page = 1;
         }
 
         $newColumnList = array();
@@ -82,13 +125,14 @@ class elasticsearchModel extends elasticsearch
                                 "must" => [
                                     ["bool" => [
                                         "should" => [
-                                            ["match" => ["title" => $search_keyword]],
-                                            ["match" => ["content" => $search_keyword]]
+                                            ["match_phrase" => ["title.nori_discard" => $search_keyword]],
+                                            ["match_phrase" => ["content.nori_discard" => $search_keyword]]
                                         ]
                                     ]]
                                 ],
                                 "filter" => [
-                                    ["match" => ["module_srl" => 134]]
+                                    ["match" => ["module_srl" => $module_srl]],
+                                    ["match" => ["status" => "PUBLIC"]],
                                 ]
                             ]
                         ],
@@ -100,8 +144,6 @@ class elasticsearchModel extends elasticsearch
                 ];
                 break;
 
-
-
             case "title":
                 $params = [
                     'index' => $prefix.'documents',
@@ -111,7 +153,7 @@ class elasticsearchModel extends elasticsearch
                         'query' => [
                             "bool" => [
                                 "must" => [
-                                    ["match" => ["title" => $search_keyword]]
+                                    ["term" => ["title.nori_discard" => $search_keyword]]
                                 ],
                                 "filter" => [
                                     ["term" => ["module_srl" => $module_srl]]
@@ -135,7 +177,7 @@ class elasticsearchModel extends elasticsearch
                         'query' => [
                             "bool" => [
                                 "must" => [
-                                    ["match" => ["content" => $search_keyword]]
+                                    ["match" => ["content.nori_discard" => $search_keyword]]
                                 ],
                                 "filter" => [
                                     ["term" => ["module_srl" => $module_srl]]
@@ -150,28 +192,97 @@ class elasticsearchModel extends elasticsearch
 
                 ];
                 break;
+        }
+        if($params) {
+            $client = self::getElasticEngineClient();
+            $response = $client->search($params);
+            $output = $this->getListOutputFromQueryResponse($response, $page, $list_count, $page_count);
 
+            return $output;
         }
 
-        return $params;
+        return null;
     }
 
-    function getDocumentList($obj, $load_extra_vars=true, $columnList = array()) {
+
+
+    function getDocumentFromCommentContent($obj, $columnList = array()) {
+        $prefix = self::getElasticEnginePrefix();
         $module_srl = $obj->module_srl;
         $page = $obj->page;
         $list_count = $obj->list_count;
         $page_count = $obj->page_count;
-        $search_target = $obj->search_target;
+        $sort_index = $obj->sort_index;
+        $order_type = $obj->order_type;
         $search_keyword = $obj->search_keyword;
+        $params = null;
+        if($prefix) {
+            $prefix .= "_";
+        }
+        if(!$page) {
+            $page = 1;
+        }
+        $newColumnList = array();
+        foreach($columnList as $each) {
+            $newColumnList[] = explode(".", $each)[1];
+        }
+        $params = [
+            'index' => $prefix.'comments',
+            'body' => [
+                "from" => max($page-1, 0) * $list_count,
+                "size" => $list_count,
+                'query' => [
+                    "bool" => [
+                        "must" => [
+                            ["match_phrase" => ["content.nori_discard" => $search_keyword]]
+                        ],
+                        "filter" => [
+                            ["term" => ["module_srl" => $module_srl]]
+                        ]
+                    ]
+                ],
+                'sort' => [
+                    $sort_index => $order_type
+                ],
+                "_source" => false
+            ]
+        ];
+        $client = self::getElasticEngineClient();
+        $response = $client->search($params);
+        $output = $this->getListOutputFromQueryResponse($response, $page, $list_count, $page_count);
+        var_dump($output);
+        exit();
+
+        return $output;
+    }
+
+    function getDocumentFromExtraVars($obj, $columnList = array()) {
+
+    }
+
+    function getDocumentFromDocumentSrls($documentSrls = array()) {
+
+    }
+
+    function getDocumentExtraVars($obj) {
+
+    }
 
 
-        $esConnector = $this->getElasticSearchClientConnector();
-        $client = $esConnector->getClient();
-        $query = $this->getQuery($esConnector->getPrefix(), $obj, $columnList);
 
-        $response = $client->search($query);
-        var_dump($obj);
-        var_dump($response);
+
+    function getDocumentList($obj, $load_extra_vars=true, $columnList = array()) {
+
+
+        if($obj->search_target === "comment") {
+            return $this->getDocumentFromCommentContent($obj, $columnList);
+        } else if(strpos($obj->search_target, "extra_vars")) {
+
+        } else {
+            return $this->getDocumentFromDocumentSearch($obj, $columnList);
+        }
+
+
 
     }
 
