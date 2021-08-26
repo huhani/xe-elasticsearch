@@ -1,0 +1,30 @@
+<query id="getImportDocumentExtraVars" action="select">
+    <tables>
+        <table name="document_extra_vars" />
+        <table name="documents" type="left join">
+            <conditions>
+                <condition operation="equal" column="documents.document_srl" default="document_extra_vars.document_srl" pipe="and" />
+            </conditions>
+        </table>
+    </tables>
+    <columns>
+        <column name="document_extra_vars.*" />
+        <column name="documents.list_order" alias="doc_list_order" />
+        <column name="documents.regdate" alias="doc_regdate" />
+        <column name="documents.user_id" alias="doc_user_id" />
+        <column name="documents.member_srl" alias="doc_member_srl" />
+        <column name="documents.category_srl" alias="doc_category_srl" />
+    </columns>
+    <conditions>
+        <condition operation="excess" column="document_extra_vars.document_srl" var="document_srl" filter="number" />
+        <group pipe="or">
+            <condition operation="equal" column="document_extra_vars.document_srl" var="document_srl" filter="number" />
+            <condition operation="excess" column="document_extra_vars.var_idx" var="last_var_idx" filter="number" pipe="and" />
+        </group>
+    </conditions>
+    <navigation>
+        <index var="sort_index" default="list_order" order="order_type" />
+        <index var="sort_index2" default="document_extra_vars.var_idx" order="order_type2" />
+        <list_count var="list_count" default="20" />
+    </navigation>
+</query>

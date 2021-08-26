@@ -1,0 +1,80 @@
+<include target="./_header.html" />
+
+
+<style>
+
+    .x .x_form-horizontal.es-query-list .x_control-group { margin-bottom: 0; padding-top: 0;}
+    .x .x_form-horizontal.es-query-list h3 { margin: 0px 0;}
+    .x .x_form-horizontal.es-query-list .section {margin: 10px 0 10px 0;}
+</style>
+
+<div class="x_form-horizontal es-query-list">
+    <section class="section">
+        <h1>Index</h1>
+        <div class="x_control-group">
+                <label class="x_control-label">Index Name</label>
+                <div class="x_controls" style="padding-top:3px">{$target_index}</div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">UUID</label>
+            <div class="x_controls" style="padding-top:3px">{$uuid}</div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h1>Shards</h1>
+        <div class="x_control-group" loop="$shards => $key,$val">
+            <label class="x_control-label">{$key}</label>
+            <div class="x_controls" style="padding-top:3px">{is_int($val) ? number_format($val) : $val}</div>
+        </div>
+    </section>
+
+
+    <section class="section">
+        <h1>Primaries</h1>
+        <div class="x_control-group">
+            <block loop="$primaries => $key,$val">
+                <section class="section">
+                    {@ $replace_key = str_replace("_", " ", $key); }
+                    <h2>{$replace_key}</h2>
+                    <block loop="$val => $_key,$_val">
+                        <div class="x_control-group">
+                            <label class="x_control-label">
+                                {@ $_replace_key = str_replace("_", " ", $_key); }
+                                {$_replace_key}
+                            </label>
+                            <div class="x_controls" style="padding-top:3px">{is_int($_val) ? number_format($_val) : $_val}</div>
+                        </div>
+                    </block>
+                </section>
+            </block>
+        </div>
+    </section>
+
+
+    <section class="section">
+        <h1>Total</h1>
+        <div class="x_control-group">
+            <block loop="$total => $key,$val">
+                <section class="section">
+                    {@ $replace_key = str_replace("_", " ", $key); }
+                    <h2>{$replace_key}</h2>
+                    <block loop="$val => $_key,$_val">
+                        <div class="x_control-group">
+                            <label class="x_control-label">
+                                {@ $_replace_key = str_replace("_", " ", $_key); }
+                                {$_replace_key}
+                            </label>
+                            <div class="x_controls" style="padding-top:3px">{is_int($_val) ? number_format($_val) : $_val}</div>
+                        </div>
+                    </block>
+                </section>
+            </block>
+        </div>
+    </section>
+    <div class="x_clearfix btnArea">
+        <div class="x_pull-left">
+            <a href="{getUrl('act', 'dispElasticsearchAdminIndexList', 'target_index', '')}" type="button" class="x_btn">목록</a>
+        </div>
+    </div>
+</div>

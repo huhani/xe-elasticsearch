@@ -1,0 +1,47 @@
+<include target="_header.html" />
+
+<div cond="$XE_VALIDATOR_MESSAGE && $XE_VALIDATOR_ID == ''" class="message {$XE_VALIDATOR_MESSAGE_TYPE}">
+    <p>{$XE_VALIDATOR_MESSAGE}</p>
+</div>
+
+
+<form id="fo_list" action="./" method="get">
+    <input type="hidden" name="module" value="{$module}" />
+    <input type="hidden" name="page" value="{$page}" />
+    <table id="memberVotgeListTable" class="x_table x_table-striped x_table-hover">
+
+        <caption>
+        </caption>
+
+
+        <thead>
+
+        <tr>
+
+
+            <th scope="col" class="nowr" cond="$indices && count($indices) > 0" loop="$indices[0] => $key,$val">{$key}</th>
+            <th scope="col" class="nowr">detail</th>
+
+            <th scope="col" class="nowr">config</th>
+
+        </tr>
+
+        </thead>
+
+        <tbody>
+
+            <tr cond="$indices" loop="$indices => $list">
+                <td class="nowr" loop="$list => $key, $val">{is_numeric($val) ? number_format($val) : $val}</td>
+                <td class="nowr">
+                    <a class="x_btn" href="{getUrl('act', 'dispElasticsearchAdminIndexState', 'target_index', $list['index'])}">stats</a>
+                    <a class="x_btn" href="{getUrl('act', 'dispElasticsearchAdminIndexMapping', 'target_index', $list['index'])}" cond="substr($list['index'], 0, 1) !== '.'">mapping</a>
+                </td>
+                <td class="nowr">
+                    <a class="x_btn" href="{getUrl('act', 'dispElasticsearchAdminIndexSetting', 'target_index', $list['index'])}" cond="substr($list['index'], 0, 1) !== '.'">config</a>
+                </td>
+            </tr>
+
+        </tbody>
+    </table>
+</form>
+<BR>

@@ -1,0 +1,12 @@
+<query id="getLastDocumentSrl" action="select">
+    <tables>
+        <table name="documents" />
+    </tables>
+    <columns>
+        <column name="document_srl" />
+    </columns>
+    <navigation>
+        <index var="sort_index" default="document_srl" order="order_type" />
+        <list_count var="list_count" default="1" />
+    </navigation>
+</query>

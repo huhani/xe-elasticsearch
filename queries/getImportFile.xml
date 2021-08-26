@@ -1,0 +1,27 @@
+<query id="getImportFile" action="select">
+    <tables>
+        <table name="files" />
+    </tables>
+    <columns>
+        <column name="file_srl" />
+        <column name="upload_target_srl" />
+        <column name="upload_target_type" />
+        <column name="module_srl" />
+        <column name="member_srl" />
+        <column name="direct_download" />
+        <column name="source_filename" />
+        <column name="uploaded_filename" />
+        <column name="file_size" />
+        <column name="isvalid" />
+        <column name="regdate" />
+        <column name="ipaddress" />
+    </columns>
+    <conditions>
+        <condition operation="excess" column="file_srl" var="file_srl" filter="number" />
+        <condition operation="less" column="file_srl" var="end_file_srl" filter="number" pipe="and" />
+    </conditions>
+    <navigation>
+        <index var="sort_index" default="list_order" order="order_type" />
+        <list_count var="list_count" default="20" />
+    </navigation>
+</query>

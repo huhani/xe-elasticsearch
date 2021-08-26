@@ -1,0 +1,155 @@
+<include target="_header.html" />
+
+<div cond="$XE_VALIDATOR_MESSAGE && $XE_VALIDATOR_ID == ''" class="message {$XE_VALIDATOR_MESSAGE_TYPE}">
+    <p>{$XE_VALIDATOR_MESSAGE}</p>
+</div>
+
+
+<form id="fo_list" action="./" method="get">
+    <input type="hidden" name="module" value="elasticsearch" />
+    <input type="hidden" name="page" value="{$page}" />
+    <table id="indexDocumentList" class="x_table x_table-striped x_table-hover" data-index-name="{$target_index}">
+
+        <caption>
+                <a href="{getUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminIndexDocumentList', 'target_index', '')}" class="active"|cond="!$target_index || $target_index === $index_prefix.'documents'">게시글<!--@if(!$target_index || $target_index === $index_prefix.'documents')--> ({$total_count})<!--@end--></a>
+                <i class="vr">|</i>
+                <a href="{getUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminIndexDocumentList', 'target_index', $index_prefix.'comments')}" class="active"|cond="$target_index === $index_prefix.'comments'">댓글<!--@if($target_index === $index_prefix.'comments')--> ({$total_count})<!--@end--></a>
+                <i class="vr">|</i>
+                <a href="{getUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminIndexDocumentList', 'target_index', $index_prefix.'document_extra_vars')}" class="active"|cond="$target_index === $index_prefix.'document_extra_vars'">확장변수<!--@if($target_index === $index_prefix.'document_extra_vars')--> ({$total_count})<!--@end--></a>
+        </caption>
+
+
+        <thead>
+
+        <tr>
+            <th scope="col" class="nowr" cond="$show_id">_id</th>
+            <th scope="col" class="nowr" loop="$columnList => $val">{$val}</th>
+            <th scope="col" class="nowr">detail</th>
+            <th scope="col">
+                <input type="checkbox" title="Check All" class="index-checkall" data-name="index-ids">
+            </th>
+        </tr>
+
+        </thead>
+
+        <tbody>
+
+        <tr cond="$list" loop="$list => $each">
+
+            <td class="nowr" cond="$show_id">{$each->_id}</td>
+            {@
+                $each_arr = get_object_vars($each);
+            }
+            <td class="nowr" loop="$columnList => $val">
+                <!--@if($val === "regdate" || $val === "last_update")-->
+                {zdate($each_arr[$val],"Y-m-d H:i")}
+                <!--@else-->
+                {$each_arr[$val]}
+                <!--@end-->
+            </td>
+            <td class="nowr">
+                <a class="x_btn" href="{getUrl('module', 'admin', 'act', 'dispElasticsearchAdminIndexDocumentDetail', 'target_index', $target_index, '_id', $each->_id)}">detail</a>
+            </td>
+            <td class="nowr"><input type="checkbox" name="_ids[]" value="{$each->_id}"></td>
+
+        </tr>
+
+        </tbody>
+    </table>
+
+    <div class="x_pull-right x_btn-group">
+        <a data-value="delete" class="modalAnchor x_btn xe-modal-window x_disabled">삭제</a>
+    </div>
+</form>
+<BR>
+
+<form action="./" class="x_pagination x_pull-left" style="margin:0px 0 0 0">
+    <input type="hidden" name="error_return_url" value="" />
+    <input type="hidden" name="module" value="{$module}" />
+    <input type="hidden" name="act" value="{$act}" />
+    <input cond="$search_keyword" type="hidden" name="search_keyword" value="{$search_keyword}" />
+    <input cond="$search_target" type="hidden" name="search_target" value="{$search_target}" />
+    <ul>
+        <li class="x_disabled"|cond="!$page || $page == 1"><a href="{getUrl('page', '')}">&laquo; {$lang->first_page}</a></li>
+        <block cond="$page_navigation->first_page != 1 && $page_navigation->first_page + $page_navigation->page_count > $page_navigation->last_page - 1 && $page_navigation->page_count != $page_navigation->total_page">
+            {@$isGoTo = true}
+            <li>
+                <a href="#goTo" data-toggle title="{$lang->cmd_go_to_page}">&hellip;</a>
+                <span cond="$isGoTo" id="goTo" class="x_input-append">
+				<input type="number" min="1" max="{$page_navigation->last_page}" required name="page" title="{$lang->cmd_go_to_page}" />
+				<button type="submit" class="x_add-on">Go</button>
+			</span>
+            </li>
+        </block>
+
+        <!--@while($page_no = $page_navigation->getNextPage())-->
+        {@$last_page = $page_no;
+        if(!$page) $page = 1;
+        }
+        <li class="x_active"|cond="$page_no == $page"><a href="{getUrl('page', $page_no)}">{$page_no}</a></li>
+        <!--@end-->
+
+        <block cond="$last_page != $page_navigation->last_page && $last_page + 1 != $page_navigation->last_page">
+            {@$isGoTo = true}
+            <li>
+                <a href="#goTo" data-toggle title="{$lang->cmd_go_to_page}">&hellip;</a>
+                <span cond="$isGoTo" id="goTo" class="x_input-append">
+				<input type="number" min="1" max="{$page_navigation->last_page}" required name="page" title="{$lang->cmd_go_to_page}" />
+				<button type="submit" class="x_add-on">Go</button>
+			</span>
+            </li>
+        </block>
+        <li class="x_disabled"|cond="$page == $page_navigation->last_page"><a href="{getUrl('page', $page_navigation->last_page)}" title="{$page_navigation->last_page}">{$lang->last_page} &raquo;</a></li>
+    </ul>
+</form>
+
+<BR>
+<form action="./" method="get" class="search center x_input-append x_clearfix">
+    <input type="hidden" name="module" value="{$module}" />
+    <input type="hidden" name="act" value="{$act}" />
+    <input type="hidden" name="target_index" value="{$target_index}" />
+    <input type="hidden" name="error_return_url" value="" />
+    <select name="search_target" title="{$lang->search_target}" style="margin-right:4px">
+        <option loop="$searchColumnList => $each" value="{$each}" selected="selected"|cond="$each === $search_target">{$each}</option>
+    </select>
+    <input type="search" name="search_keyword" value="{htmlspecialchars($search_keyword, ENT_COMPAT | ENT_HTML401, 'UTF-8', false)}" title="{$lang->cmd_search}" />
+    <button type="submit" class="x_btn x_btn-inverse">{$lang->cmd_search}</button>
+    <a href="{getUrl('','module',$module,'act',$act)}" class="x_btn">{$lang->cmd_cancel}</a>
+</form>
+
+<script>
+    (function($){
+        function disableDeleteBtnIfItemNotExtst() {
+            var $btn = $('form a[data-value=delete]');
+            if($('form input[name^=_ids]:checked').length > 0) {
+                $btn.removeClass('x_disabled');
+            } else {
+                if(!$btn.hasClass('x_disabled')) {
+                    $btn.addClass('x_disabled');
+                }
+            }
+        }
+        $(document).on('change', 'form input[name^=_ids]', function(evt) {
+            disableDeleteBtnIfItemNotExtst();
+        });
+        $(document).on('click', 'form .index-checkall', function() {
+            $('input[type=checkbox][name^=_ids]').prop('checked', $(this).prop('checked'));
+            disableDeleteBtnIfItemNotExtst();
+        });
+        $(document).on('click', 'form a[data-value=delete]', function() {
+            var _ids = [];
+            $('input[type=checkbox][name^=_ids]:checked').each(function(idx, each){
+                if(each.value) {
+                    _ids.push(each.value);
+                }
+            });
+            window.exec_json('elasticsearch.procElasticsearchAdminIndexDocumentDelete', {
+                target_index: $('#indexDocumentList').attr('data-index-name'),
+                _ids: _ids
+            }, function(resp){
+                alert('삭제되었습니다.');
+                window.location.reload();
+            });
+        });
+    })(window.jQuery);
+</script>

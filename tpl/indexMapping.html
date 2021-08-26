@@ -1,0 +1,25 @@
+<include target="./_header.html" />
+
+
+<h2>Mapping 정보</h2>
+
+<table class="x_table x_table-striped x_table-hover">
+    <colgroup>
+        <col width="120">
+    </colgroup>
+    <tbody>
+    <tr loop="$properties => $key,$val">
+        <th scope="col" class="nowr">{$key}</th>
+        <td>type: {$val['type']}
+            <!--@if(isset($val['format']))--><BR> format: {$val['format']}<!--@end-->
+        </td>
+    </tr>
+
+    </tbody>
+</table>
+
+<div class="x_clearfix btnArea">
+    <div class="x_pull-left">
+        <a href="{getUrl('act', 'dispElasticsearchAdminIndexList', 'target_index', '')}" type="button" class="x_btn">목록</a>
+    </div>
+</div>

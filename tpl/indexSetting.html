@@ -1,0 +1,640 @@
+<include target="./_header.html" />
+
+<div class="x_form-horizontal">
+    <section class="section">
+        <h1>Setting</h1>
+        <div class="x_control-group">
+            <label class="x_control-label">Index Name</label>
+            <div class="x_controls" style="padding-top:3px">{$target_index}</div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">purge</label>
+            <div class="x_controls" style="padding-top:3px">
+                <a href="javascript:;" class="x_btn es-index-purge" data-index="{$target_index}">purge</a>
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">delete</label>
+            <div class="x_controls" style="padding-top:3px">
+                <a href="javascript:;" class="x_btn es-index-delete" data-index="{$target_index}">delete</a>
+            </div>
+        </div>
+    </section>
+
+
+    <!--@if($target_index === $index_prefix."documents")-->
+
+    <section class="section index index-documents">
+        <h1>Index</h1>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_start_document_srl">start document_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_start_document_srl" id="index_start_document_srl" value="0" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_end_document_srl">end document_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_end_document_srl" id="index_end_document_srl" value="{$last_document_srl}" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_chunk_size">chunk size</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_chunk_size" id="index_chunk_size" value="1000" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_request_interval">request interval (ms)</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_request_interval" id="index_request_interval" value="250" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">index</label>
+            <div class="x_controls" style="padding-top:3px">
+                <a href="javascript:;" class="x_btn startDocumentIndex" data-index="{$target_index}">start</a>
+                <a href="javascript:;" class="x_btn stopDocumentIndex" data-index="{$target_index}" style="display: none">stop</a>
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">status</label>
+            <div class="x_controls" style="padding-top:3px">
+                <table border="0">
+                    <tr class="insert-count">
+                        <td style="width: 140px;">insertCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="update-count">
+                        <td style="width: 140px;">updateCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="fail-count">
+                        <td style="width: 140px;">failCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="last-document-srl">
+                        <td style="width: 140px;">lastDocumentSrl</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="section delete index-documents">
+        <h1>delete</h1>
+        <div class="x_control-group">
+            <label class="x_control-label" for="delete_start_document_srl">start document_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_start_document_srl" id="delete_start_document_srl" value="0" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="delete_end_document_srl">end document_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_end_document_srl" id="delete_end_document_srl" value="{$last_document_srl}" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">delete</label>
+            <div class="x_controls" style="padding-top:3px">
+                <a href="javascript:;" class="x_btn startDocumentDelete" data-index="{$target_index}">delete</a>
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">status</label>
+            <div class="x_controls" style="padding-top:3px">
+                <table border="0">
+                    <tr class="delete-count">
+                        <td style="width: 140px;">deleteCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        jQuery(document).ready(function($){
+            var request = false;
+            var stopFlag = false;
+            var requestTimerID = null;
+
+            $(document).on('click', '.startDocumentDelete', function() {
+                if(request) {
+                    return;
+                }
+                exec_json('elasticsearch.procElasticsearchAdminIndexDocumentManage', {
+                    target_index: $('.startDocumentIndex').attr('data-index'),
+                    job: 'delete',
+                    start_document_srl: $('#delete_start_document_srl').val(),
+                    end_document_srl: $('#delete_end_document_srl').val()
+                }, function(ret_obj){
+                    request = false;
+                    alert(ret_obj.deletedCount + "개의 데이터를 삭제하였습니다.");
+                    $('.delete-count .val').html(ret_obj.deletedCount);
+                });
+            });
+
+            $(document).on('click', '.startDocumentIndex', function() {
+                if(request) {
+                    return;
+                }
+
+                $('.insert-count .val').html("-");
+                $('.update-count .val').html("-");
+                $('.fail-count .val').html("-");
+                $('.last-document-srl .val').html("-");
+                $('.startDocumentIndex').hide();
+                $('.stopDocumentIndex').show();
+                var lastDocumentSrl = parseInt($('#index_start_document_srl').val(), 10) || 0;
+                var endDocumentSrl = parseInt($('#index_end_document_srl').val(), 10) || 0;
+                var insertCount = 0;
+                var updateCount = 0;
+                var failCount = 0;
+                var requestInterval = parseInt($("#index_request_interval").val(), 10);
+                var chunk_count = parseInt($('#index_chunk_size').val(), 10) || 1000;
+                if(isNaN(requestInterval) || requestInterval < 0) {
+                    requestInterval = 250;
+                }
+
+                var fn = function() {
+                    if(stopFlag) {
+                        stopFlag = false;
+                        request = false;
+                        return;
+                    }
+                    requestTimerID = null;
+                    request = true;
+                    var targetIndex = $('.startDocumentIndex').attr('data-index');
+                    exec_json('elasticsearch.procElasticsearchAdminIndexDocumentManage', {
+                        target_index: targetIndex,
+                        job: 'insert',
+                        start_document_srl: lastDocumentSrl,
+                        end_document_srl: endDocumentSrl,
+                        chunk_count: chunk_count
+                    }, function(ret_obj){
+                        lastDocumentSrl = ret_obj.lastDocumentSrl;
+                        insertCount += ret_obj.insertCount;
+                        updateCount += ret_obj.updateCount;
+                        failCount += ret_obj.failCount;
+                        $('.insert-count .val').html(insertCount);
+                        $('.update-count .val').html(updateCount);
+                        $('.fail-count .val').html(failCount);
+                        $('.last-document-srl .val').html(lastDocumentSrl);
+                        if(ret_obj.insertCount + ret_obj.updateCount + ret_obj.failCount < chunk_count) {
+                            request = false;
+                            $('.startDocumentIndex').show();
+                            $('.stopDocumentIndex').hide();
+                            alert("done.");
+                        } else {
+                            requestTimerID = setTimeout(fn, requestInterval);
+                        }
+                    });
+                }
+
+                fn();
+            });
+
+            $(document).on('click', '.stopDocumentIndex', function() {
+                stopFlag = true;
+                $('.startDocumentIndex').show();
+                $('.stopDocumentIndex').hide();
+            });
+
+        });
+    </script>
+
+    <!--@else if($target_index === $index_prefix."comments")-->
+
+    <section class="section index index-comments">
+        <h1>Index</h1>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_start_comment_srl">start comment_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_start_comment_srl" id="index_start_comment_srl" value="0" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_end_comment_srl">end comment_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_end_comment_srl" id="index_end_comment_srl" value="{$last_comment_srl}" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_chunk_size">chunk size</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_chunk_size" id="index_chunk_size" value="1000" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_request_interval">request interval (ms)</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_request_interval" id="index_request_interval" value="250" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">index</label>
+            <div class="x_controls" style="padding-top:3px">
+                <a href="javascript:;" class="x_btn startCommentIndex" data-index="{$target_index}">start</a>
+                <a href="javascript:;" class="x_btn stopCommentIndex" data-index="{$target_index}" style="display: none">stop</a>
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">status</label>
+            <div class="x_controls" style="padding-top:3px">
+                <table border="0">
+                    <tr class="insert-count">
+                        <td style="width: 140px;">insertCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="update-count">
+                        <td style="width: 140px;">updateCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="fail-count">
+                        <td style="width: 140px;">failCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="last-comment-srl">
+                        <td style="width: 140px;">lastCommentSrl</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="section delete index-comments">
+        <h1>delete</h1>
+        <div class="x_control-group">
+            <label class="x_control-label" for="delete_start_comment_srl">start comment_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="delete_start_comment_srl" id="delete_start_comment_srl" value="0" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="delete_end_comment_srl">end comment_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="delete_end_comment_srl" id="delete_end_comment_srl" value="{$last_comment_srl}" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">delete</label>
+            <div class="x_controls" style="padding-top:3px">
+                <a href="javascript:;" class="x_btn startCommentDelete" data-index="{$target_index}">delete</a>
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">status</label>
+            <div class="x_controls" style="padding-top:3px">
+                <table border="0">
+                    <tr class="delete-count">
+                        <td style="width: 140px;">deleteCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        jQuery(document).ready(function($){
+            var request = false;
+            var stopFlag = false;
+            var requestTimerID = null;
+
+            $(document).on('click', '.startCommentDelete', function() {
+                if(request) {
+                    return;
+                }
+                exec_json('elasticsearch.procElasticsearchAdminIndexCommentManage', {
+                    target_index: $('.startCommentIndex').attr('data-index'),
+                    job: 'delete',
+                    start_comment_srl: $('#delete_start_comment_srl').val(),
+                    end_comment_srl: $('#delete_end_comment_srl').val()
+                }, function(ret_obj){
+                    request = false;
+                    alert(ret_obj.deletedCount + "개의 데이터를 삭제하였습니다.");
+                    $('.delete-count .val').html(ret_obj.deletedCount);
+                });
+            });
+
+            $(document).on('click', '.startCommentIndex', function() {
+                if(request) {
+                    return;
+                }
+
+                $('.insert-count .val').html("-");
+                $('.update-count .val').html("-");
+                $('.fail-count .val').html("-");
+                $('.last-comment-srl .val').html("-");
+                $('.startCommentIndex').hide();
+                $('.stopCommentIndex').show();
+                var lastCommentSrl = parseInt($('#index_start_comment_srl').val(), 10) || 0;
+                var endCommentSrl = parseInt($('#index_end_comment_srl').val(), 10) || 0;
+                var insertCount = 0;
+                var updateCount = 0;
+                var failCount = 0;
+                var requestInterval = parseInt($("#index_request_interval").val(), 10);
+                var chunk_count = parseInt($('#index_chunk_size').val(), 10) || 1000;
+                var targetIndex = $('.startCommentIndex').attr('data-index');
+                if(isNaN(requestInterval) || requestInterval < 0) {
+                    requestInterval = 250;
+                }
+
+                var fn = function() {
+                    if(stopFlag) {
+                        stopFlag = false;
+                        request = false;
+                        return;
+                    }
+                    requestTimerID = null;
+                    request = true;
+                    exec_json('elasticsearch.procElasticsearchAdminIndexCommentManage', {
+                        target_index: targetIndex,
+                        job: 'insert',
+                        start_comment_srl: lastCommentSrl,
+                        end_comment_srl: endCommentSrl,
+                        chunk_count: chunk_count
+                    }, function(ret_obj){
+                        lastCommentSrl = ret_obj.lastCommentSrl;
+                        insertCount += ret_obj.insertCount;
+                        updateCount += ret_obj.updateCount;
+                        failCount += ret_obj.failCount;
+                        $('.insert-count .val').html(insertCount);
+                        $('.update-count .val').html(updateCount);
+                        $('.fail-count .val').html(failCount);
+                        $('.last-comment-srl .val').html(lastCommentSrl);
+                        if(ret_obj.insertCount + ret_obj.updateCount + ret_obj.failCount < chunk_count) {
+                            request = false;
+                            $('.startCommentIndex').show();
+                            $('.stopCommentIndex').hide();
+                            alert("done.");
+                        } else {
+                            requestTimerID = setTimeout(fn, requestInterval);
+                        }
+                    });
+                }
+
+                fn();
+            });
+
+            $(document).on('click', '.stopCommentIndex', function() {
+                stopFlag = true;
+                $('.startCommentIndex').show();
+                $('.stopCommentIndex').hide();
+            });
+
+        });
+    </script>
+
+    <!--@else if($target_index === $index_prefix."document_extra_vars")-->
+
+    <section class="section index index-document_extra_vars">
+        <h1>Index</h1>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_start_document_srl">start document_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_start_document_srl" id="index_start_document_srl" value="0" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_end_document_srl">end document_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_end_document_srl" id="index_end_document_srl" value="{$last_document_srl}" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_last_var_idx">last var_idx</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_last_var_idx" id="index_last_var_idx" value="-1" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_chunk_size">chunk size</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_chunk_size" id="index_chunk_size" value="1000" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_request_interval">request interval (ms)</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_request_interval" id="index_request_interval" value="250" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">index</label>
+            <div class="x_controls" style="padding-top:3px">
+                <a href="javascript:;" class="x_btn startExtraVarsDocumentIndex" data-index="{$target_index}">start</a>
+                <a href="javascript:;" class="x_btn stopExtraVarsDocumentIndex" data-index="{$target_index}" style="display: none">stop</a>
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">status</label>
+            <div class="x_controls" style="padding-top:3px">
+                <table border="0">
+                    <tr class="insert-count">
+                        <td style="width: 140px;">insertCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="update-count">
+                        <td style="width: 140px;">updateCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="fail-count">
+                        <td style="width: 140px;">failCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="last-document-srl">
+                        <td style="width: 140px;">lastDocumentSrl</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="last-var-idx">
+                        <td style="width: 140px;">lastVarIdx</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="section delete index-document_extra_vars">
+        <h1>delete</h1>
+        <div class="x_control-group">
+            <label class="x_control-label" for="delete_start_document_srl">start document_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_start_document_srl" id="delete_start_document_srl" value="0" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="delete_end_document_srl">end document_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_end_document_srl" id="delete_end_document_srl" value="{$last_document_srl}" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">delete</label>
+            <div class="x_controls" style="padding-top:3px">
+                <a href="javascript:;" class="x_btn startExtraVarsDocumentDelete" data-index="{$target_index}">delete</a>
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">status</label>
+            <div class="x_controls" style="padding-top:3px">
+                <table border="0">
+                    <tr class="delete-count">
+                        <td style="width: 140px;">deleteCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        jQuery(document).ready(function($){
+            var request = false;
+            var stopFlag = false;
+            var requestTimerID = null;
+
+            $(document).on('click', '.startExtraVarsDocumentDelete', function() {
+                if(request) {
+                    return;
+                }
+                exec_json('elasticsearch.procElasticsearchAdminIndexDocumentExtraVarsManage', {
+                    target_index: $('.startExtraVarsDocumentDelete').attr('data-index'),
+                    job: 'delete',
+                    start_document_srl: $('#delete_start_document_srl').val(),
+                    end_document_srl: $('#delete_end_document_srl').val()
+                }, function(ret_obj){
+                    request = false;
+                    alert(ret_obj.deletedCount + "개의 데이터를 삭제하였습니다.");
+                    $('.delete-count .val').html(ret_obj.deletedCount);
+                });
+            });
+
+            $(document).on('click', '.startExtraVarsDocumentIndex', function() {
+                if(request) {
+                    return;
+                }
+
+                $('.insert-count .val').html("-");
+                $('.update-count .val').html("-");
+                $('.fail-count .val').html("-");
+                $('.last-document-srl .val').html("-");
+                $('.last-var-idx .val').html("-");
+                $('.startExtraVarsDocumentIndex').hide();
+                $('.stopExtraVarsDocumentIndex').show();
+                var lastDocumentSrl = parseInt($('#index_start_document_srl').val(), 10) || 0;
+                var endDocumentSrl = parseInt($('#index_end_document_srl').val(), 10) || 0;
+                var insertCount = 0;
+                var updateCount = 0;
+                var failCount = 0;
+                var requestInterval = parseInt($("#index_request_interval").val(), 10);
+                var chunk_count = parseInt($('#index_chunk_size').val(), 10) || 1000;
+                var lastVarIdx = parseInt($('#index_last_var_idx').val(), 10) || -1;
+                if(isNaN(requestInterval) || requestInterval < 0) {
+                    requestInterval = 250;
+                }
+
+                var fn = function() {
+                    if(stopFlag) {
+                        stopFlag = false;
+                        request = false;
+                        return;
+                    }
+                    requestTimerID = null;
+                    request = true;
+                    var targetIndex = $('.startExtraVarsDocumentIndex').attr('data-index');
+                    exec_json('elasticsearch.procElasticsearchAdminIndexDocumentExtraVarsManage', {
+                        target_index: targetIndex,
+                        job: 'insert',
+                        start_document_srl: lastDocumentSrl,
+                        last_var_idx : lastVarIdx,
+                        end_document_srl: endDocumentSrl,
+                        chunk_count: chunk_count
+                    }, function(ret_obj){
+                        lastDocumentSrl = ret_obj.lastDocumentSrl;
+                        lastVarIdx = ret_obj.lastVarIdx;
+                        insertCount += ret_obj.insertCount;
+                        updateCount += ret_obj.updateCount;
+                        failCount += ret_obj.failCount;
+                        $('.insert-count .val').html(insertCount);
+                        $('.update-count .val').html(updateCount);
+                        $('.fail-count .val').html(failCount);
+                        $('.last-document-srl .val').html(lastDocumentSrl);
+                        $('.last-var-idx .val').html(lastVarIdx);
+                        if(ret_obj.insertCount + ret_obj.updateCount + ret_obj.failCount < chunk_count) {
+                            request = false;
+                            $('.startExtraVarsDocumentIndex').show();
+                            $('.stopExtraVarsDocumentIndex').hide();
+                            alert("done.");
+                        } else {
+                            requestTimerID = setTimeout(fn, requestInterval);
+                        }
+                    });
+                }
+
+                fn();
+            });
+
+            $(document).on('click', '.stopExtraVarsDocumentIndex', function() {
+                stopFlag = true;
+                $('.startExtraVarsDocumentIndex').show();
+                $('.stopExtraVarsDocumentIndex').hide();
+            });
+
+        });
+    </script>
+
+
+    <!--@end-->
+
+
+
+
+</div>
+
+<div class="x_clearfix btnArea">
+    <div class="x_pull-left">
+        <a href="{getUrl('act', 'dispElasticsearchAdminIndexList', 'target_index', '')}" type="button" class="x_btn es-list">목록</a>
+    </div>
+</div>
+
+<script>
+    jQuery(document).ready(function($){
+        var request = false;
+        $(document).on('click', '.es-index-purge', function() {
+            if(request) {
+                return;
+            }
+            var $this = $(this);
+            var target_index = $this.attr('data-index');
+            request = true;
+            window.exec_json('elasticsearch.procElasticsearchAdminIndexPurge', {target_index: target_index}, function(ret_obj) {
+                request = false;
+                alert(ret_obj.message);
+            });
+        });
+
+        $(document).on('click', '.es-index-delete', function() {
+            if(request) {
+                return;
+            }
+            var $this = $(this);
+            var target_index = $this.attr('data-index');
+            var msg = confirm("해당 인덱스를 정말로 삭제하시겠습니까?\n 개발 작업이 아니라면 계속 진행하지 마세요.");
+            if(msg) {
+                request = true;
+                window.exec_json('elasticsearch.procElasticsearchAdminIndexDelete', {target_index: target_index}, function(ret_obj) {
+                    request = false;
+                    alert(ret_obj.message);
+                    window.location.href = $('a.es-list').attr('href');
+                });
+            }
+        });
+
+    });
+</script>

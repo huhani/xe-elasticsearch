@@ -1,0 +1,18 @@
+<div class="x_page-header">
+	<h1>
+		{$lang->suyongso}
+	</h1>
+</div>
+
+<ul class="x_nav x_nav-tabs">
+
+	<li class="x_active"|cond="in_array($act, array('dispElasticsearchAdminIndexList', 'dispElasticsearchAdminIndexState', 'dispElasticsearchAdminIndexMapping', 'dispElasticsearchAdminIndexSetting'))">
+		<a href="{getUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminIndexList')}">인덱스 목록</a>
+	</li>
+	<li class="x_active"|cond="$act == 'dispElasticsearchAdminIndexDocumentList' || $act == 'dispElasticsearchAdminIndexDocumentDetail'">
+		<a href="{getUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminIndexDocumentList')}">인덱스 데이터</a>
+	</li>
+	<li class="x_active"|cond="$act == 'dispElasticsearchAdminOtherSetting'">
+		<a href="{getUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminOtherSetting')}">기타</a>
+	</li>
+</ul>

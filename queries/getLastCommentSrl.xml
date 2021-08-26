@@ -1,0 +1,12 @@
+<query id="getLastCommentSrl" action="select">
+    <tables>
+        <table name="comments" />
+    </tables>
+    <columns>
+        <column name="comment_srl" />
+    </columns>
+    <navigation>
+        <index var="sort_index" default="comment_srl" order="order_type" />
+        <list_count var="list_count" default="1" />
+    </navigation>
+</query>

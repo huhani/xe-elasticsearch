@@ -1,0 +1,52 @@
+<include target="_header.html" />
+
+
+<h2>인덱스 문서 상세정보</h2>
+<table class="x_table x_table-striped x_table-hover">
+    <colgroup>
+        <col width="120">
+    </colgroup>
+    <tbody>
+    <tr loop="$result => $key,$val" cond="!is_array($val)">
+        <th scope="col" class="nowr">{$key}</th>
+        <td>{$val}</td>
+    </tr>
+    </tbody>
+</table>
+
+<BR><BR>
+
+<!--@if(isset($result['_source']))-->
+<h2>인덱스 문서 상세정보 - source</h2>
+<table class="x_table x_table-striped x_table-hover">
+    <colgroup>
+        <col width="120">
+    </colgroup>
+    <tbody>
+    <tr loop="$result['_source'] => $key,$val">
+        <th scope="col" class="nowr">{$key}</th>
+        <td>{$val}</td>
+    </tr>
+    </tbody>
+</table>
+<!--@end-->
+
+
+<form action="./" method="post">
+    <input type="hidden" name="vid" value="">
+    <input type="hidden" name="mid" value="">
+    <input type="hidden" name="module" value="admin">
+    <input type="hidden" name="act" value="procElasticsearchAdminIndexDocumentDelete">
+    <input type="hidden" name="target_index" value="{$target_index}">
+    <input type="hidden" name="_ids" value="{$_id}">
+    <div class="x_clearfix btnArea">
+        <div class="x_pull-left">
+            <a href="{getUrl('act', 'dispElasticsearchAdminIndexDocumentList', '_id', '')}" type="button" class="x_btn es-list">목록</a>
+        </div>
+        <div class="x_pull-right">
+            <button type="submit" name="is_all" class="x_btn" value="false">삭제</button>
+        </div>
+    </div>
+
+</form>
+

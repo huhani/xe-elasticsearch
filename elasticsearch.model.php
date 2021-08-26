@@ -41,7 +41,7 @@ class elasticsearchModel extends elasticsearch
 
     private static $host = "127.0.0.1";
     private static $port = 9200;
-    private static $prefix = "sy";
+    private static $prefix = "es";
     private static $client = null;
 
     function init()
@@ -60,24 +60,48 @@ class elasticsearchModel extends elasticsearch
         return self::$prefix;
     }
 
-    function getListOutputFromQueryResponse($result, $page, $list_count, $page_count) {
+    function getDocumentListFromSearchResponse($result, $page, $list_count, $page_count, $isExtraVars, $columnList) {
         if(!$result) {
             return null;
         }
 
         $hits = $result['hits'];
-        $result = $hits['hits'];
+        $hitsData = $hits['hits'];
         $total_count = $hits['total']['value'];
         $total_page = max(1, ceil($total_count / $list_count));
         $data = array();
         $last_id = $total_count - (($page-1) * $list_count);
-        foreach($result as $each) {
-            $doc = new stdClass();
-            foreach($each['_source'] as $key=>$val) {
-                $doc->{$key} = $val;
+        $documentSrls = array();
+
+        if(isset($result['aggregations']) && isset($result['aggregations']['group_by_document_srl'])) {
+            $total_count = $result['aggregations']['document_count']['value'];
+            $total_page = max(1, ceil($total_count / $list_count));
+            $last_id = $total_count - (($page-1) * $list_count);
+
+            $groupByResult = $result['aggregations']['group_by_document_srl'];
+            $bucket = $groupByResult['buckets'];
+            foreach($bucket as $each) {
+                $documentSrls[] = $each['key'];
             }
-            $data[$last_id--] = $doc;
+        } else {
+            foreach($hitsData as $each) {
+                if($each['fields'] && isset($each['fields']['document_srl']) && $each['fields']['document_srl']) {
+                    $documentSrls[] = $each['fields']['document_srl'][0];
+                }
+            }
         }
+
+        $aDocument = $this->getDocuments($documentSrls, $isExtraVars, $columnList);
+        if($last_id > count($aDocument)) {
+            $last_id -= abs(count($documentSrls) - count($aDocument));
+
+        }
+        foreach($documentSrls as $eachDocument_srl) {
+            if(isset($aDocument[$eachDocument_srl]) && $aDocument[$eachDocument_srl]) {
+                $data[$last_id--] = $aDocument[$eachDocument_srl];
+            }
+        }
+
         $page_navigation = new PageHandler($total_count, $total_page, $page, $page_count);
 
         $output = new BaseObject();
@@ -90,14 +114,668 @@ class elasticsearchModel extends elasticsearch
         return $output;
     }
 
-    function getDocumentFromDocumentSearch($obj, $columnList) {
+    function getIndexDocumentSearchCount($obj) {
+        $client = self::getElasticEngineClient();
         $prefix = self::getElasticEnginePrefix();
+        if($prefix) {
+            $prefix .= "_";
+        }
+        $module_srl = $obj->module_srl;
+        $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
+        $search_target = $obj->search_target;
+        $search_keyword = $obj->search_keyword;
+        $_searchTarget = $search_target;
+        $varIdx = -1;
+        if(strpos($_searchTarget, "extra_vars") !== false) {
+            $str = explode("extra_vars", $_searchTarget);
+            $varIdx = (int)$str[1];
+            if(!$varIdx) {
+                return null;
+            }
+            $_searchTarget = "extra_vars";
+        }
+
+        $params = null;
+        switch ($_searchTarget) {
+            case "title_content" :
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["bool" => [
+                                        "should" => [
+                                            ["match_phrase" => ["title.my_ngram" => $search_keyword]],
+                                            ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                        ]
+                                    ]]
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->count($params);
+                return $result['count'];
+
+            case "title":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["title.my_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                    ]
+                ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->count($params);
+                return $result['count'];
+
+            case "content":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->count($params);
+                return $result['count'];
+
+            case "comment":
+                $params = [
+                    'index' => $prefix.'comments',
+                    'body' => [
+                        "size" => 0,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        'aggs' => [
+                            "document_count" => ["cardinality" => ["field"=>"document_srl"]]
+                        ],
+                    ]
+                ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["doc_category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->search($params);
+                return $result['aggregations']['document_count']['value'];
+
+            case "extra_vars":
+                $params = [
+                    'index' => $prefix.'document_extra_vars',
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "should" => [
+                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]],
+                                    ["match" => ["value" => $search_keyword]]
+                                ],
+                                "filter" => [
+                                    ["term" => ["module_srl" => $module_srl]],
+                                    ["term" => ["var_idx" => $varIdx]]
+                                ],
+                                "minimum_should_match" => 1
+                            ]
+                        ]
+                    ]
+                ];
+                $filter = [];
+                $filter[] = ["match" => ["var_idx" => $varIdx]];
+                if($category_srl) {
+                    $filter[] = ["match" => ["doc_category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                }
+                $params['body']['query']['bool']['filter'] = $filter;
+                $result = $client->count($params);
+                return $result['count'];
+        }
+
+        return 0;
+    }
+
+    function getDocumentFromSearchFromSearchAfter($obj, $columnList) {
+        $chunkSize = 10000;
+
+        $total_count = $this->getIndexDocumentSearchCount($obj);
+        $prefix = self::getElasticEnginePrefix();
+        $client = self::getElasticEngineClient();
+        $isExtraVars = $obj->isExtraVars;
         $module_srl = $obj->module_srl;
         $page = $obj->page;
         $list_count = $obj->list_count;
         $page_count = $obj->page_count;
-        $sort_index = $obj->sort_index;
-        $order_type = $obj->order_type;
+        $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
+        $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
+        $order_type = isset($obj->order_type) ? $obj->order_type : "desc";
+        $search_target = $obj->search_target;
+        $search_keyword = $obj->search_keyword;
+        $fromPage = max(0, $page-1);
+        $endPage = $fromPage + 1;
+        $from = $fromPage * $list_count;
+        $end = $endPage * $list_count;
+        $search_after = null;
+        if($prefix) {
+            $prefix .= "_";
+        }
+        if(!$page) {
+            $page = 1;
+        }
+
+        $_searchTarget = $search_target;
+        $varIdx = -1;
+        if(strpos($_searchTarget, "extra_vars") !== false) {
+            $str = explode("extra_vars", $_searchTarget);
+            $varIdx = (int)$str[1];
+            if(!$varIdx) {
+                return null;
+            }
+            $_searchTarget = "extra_vars";
+        }
+
+        $_result = null;
+        $moveOffset = floor($from / $chunkSize) * $chunkSize;
+        $leftOffset = $moveOffset;
+        $afterFromOffset = $from - $moveOffset;
+        $afterSizeOffset = $end - $moveOffset;
+        switch ($_searchTarget) {
+            case "title_content" :
+                while($leftOffset > 0) {
+                    $params = [
+                        'index' => $prefix.'documents',
+                        'body' => [
+                            "size" => $chunkSize,
+                            'query' => [
+                                "bool" => [
+                                    "must" => [
+                                        ["bool" => [
+                                            "should" => [
+                                                ["match_phrase" => ["title.my_ngram" => $search_keyword]],
+                                                ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                            ]
+                                        ]]
+                                    ]
+                                ]
+                            ],
+                            "_source" => false,
+                            "sort" => [
+                                $sort_index => $order_type
+                            ]
+                        ]
+                    ];
+                    $filter = [];
+                    if($category_srl) {
+                        $filter[] = ["match" => ["category_srl" => $category_srl]];
+                    }
+                    if($module_srl) {
+                        $filter[] = ["match" => ["module_srl" => $module_srl]];
+                        $filter[] = ["match" => ["status" => "PUBLIC"]];
+                    }
+                    if($search_after) {
+                        $params['body']['search_after'] = $search_after;
+                    }
+                    if(count($filter) > 0) {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
+                    $result = $client->search($params);
+                    $hits = $result['hits'];
+                    $hitsData = $hits['hits'];
+                    $leftOffset -= $chunkSize;
+                    $last = end($hitsData);
+                    $search_after = $last['sort'];
+                }
+
+                $_params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        "size" => $afterSizeOffset,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["bool" => [
+                                        "should" => [
+                                            ["match_phrase" => ["title.my_ngram" => $search_keyword]],
+                                            ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                        ]
+                                    ]]
+                                ]
+                            ]
+                        ],
+                        "fields" => ["document_srl"],
+                        'sort' => [
+                            $sort_index => $order_type
+                        ],
+                        "_source" => false,
+                    ]
+                ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $_params['body']['query']['bool']['filter'] = $filter;
+                }
+                if($search_after) {
+                    $_params['body']['search_after'] = $search_after;
+                }
+                $_result = $client->search($_params);
+                break;
+
+            case "title":
+                while($leftOffset > 0) {
+                    $params = [
+                        'index' => $prefix.'documents',
+                        'body' => [
+                            "size" => $chunkSize,
+                            'query' => [
+                                "bool" => [
+                                    "must" => [
+                                        ["match_phrase" => ["title.my_ngram" => $search_keyword]]
+                                    ]
+                                ]
+                            ],
+                            'sort' => [
+                                $sort_index => $order_type
+                            ],
+                            "_source" => false,
+                        ]
+                    ];
+                    $filter = [];
+                    if($category_srl) {
+                        $filter[] = ["match" => ["category_srl" => $category_srl]];
+                    }
+                    if($module_srl) {
+                        $filter[] = ["match" => ["module_srl" => $module_srl]];
+                        $filter[] = ["match" => ["status" => "PUBLIC"]];
+                    }
+
+                    if($search_after) {
+                        $params['body']['search_after'] = $search_after;
+                    }
+                    if(count($filter) > 0) {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
+                    $result = $client->search($params);
+                    $hits = $result['hits'];
+                    $hitsData = $hits['hits'];
+                    $leftOffset -= $chunkSize;
+                    $last = end($hitsData);
+                    $search_after = $last['sort'];
+                }
+                $_params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        "size" => $afterSizeOffset,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["title.my_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "fields" => ["document_srl"],
+                        'sort' => [
+                            $sort_index => $order_type
+                        ],
+                        "_source" => false,
+                    ]
+                ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $_params['body']['query']['bool']['filter'] = $filter;
+                }
+                if($search_after) {
+                    $_params['body']['search_after'] = $search_after;
+                }
+                $_result = $client->search($_params);
+                break;
+
+            case "content":
+                while($leftOffset > 0) {
+                    $params = [
+                        'index' => $prefix.'documents',
+                        'body' => [
+                            "size" => $chunkSize,
+                            'query' => [
+                                "bool" => [
+                                    "must" => [
+                                        ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                    ]
+                                ]
+                            ],
+                            'sort' => [
+                                $sort_index => $order_type
+                            ],
+                            "_source" => false,
+                        ]
+                    ];
+                    $filter = [];
+                    if($category_srl) {
+                        $filter[] = ["match" => ["category_srl" => $category_srl]];
+                    }
+                    if($module_srl) {
+                        $filter[] = ["match" => ["module_srl" => $module_srl]];
+                        $filter[] = ["match" => ["status" => "PUBLIC"]];
+                    }
+
+                    if($search_after) {
+                        $params['body']['search_after'] = $search_after;
+                    }
+                    if(count($filter) > 0) {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
+                    $result = $client->search($params);
+                    $hits = $result['hits'];
+                    $hitsData = $hits['hits'];
+                    $leftOffset -= $chunkSize;
+                    $last = end($hitsData);
+                    $search_after = $last['sort'];
+                }
+                $_params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        "size" => $afterSizeOffset,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "fields" => ["document_srl"],
+                        'sort' => [
+                            $sort_index => $order_type
+                        ],
+                        "_source" => false,
+                    ]
+                ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $_params['body']['query']['bool']['filter'] = $filter;
+                }
+                if($search_after) {
+                    $_params['body']['search_after'] = $search_after;
+                }
+                $_result = $client->search($_params);
+                break;
+
+            case "comment":
+                $afterRegdate = null;
+                $afterListOrder = null;
+
+                while(true) {
+                    $params = [
+                        'index' => $prefix.'comments',
+                        'body' => [
+                            "size" => 0,
+                            'query' => [
+                                "bool" => [
+                                    "must" => [
+                                        ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                    ]
+                                ]
+                            ],
+                            "_source" => false,
+                            'aggs' => [
+                                'group_by_document_srl' => [
+                                    "terms" => [
+                                        "field" => "document_srl",
+                                        "size" => $leftOffset > 0 ? $chunkSize : $afterSizeOffset,
+                                        "order" => ["doc_".$sort_index => $order_type]
+                                    ],
+                                    'aggs' => [
+                                        'doc_regdate' => ["min" => ["field" => "doc_regdate"]],
+                                        'doc_list_order' => ["min" => ["field" => "doc_list_order"]]
+                                    ]
+                                ]
+                            ],
+                        ]
+                    ];
+                    $filter = [];
+                    if($category_srl) {
+                        $filter[] = ["match" => ["doc_category_srl" => $category_srl]];
+                    }
+                    if($module_srl) {
+                        $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    }
+                    if(count($filter) > 0) {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
+                    if($afterRegdate || $afterListOrder) {
+                        $params['body']['query']['bool']['must'][] = ["range" =>
+                            ["doc_".$sort_index =>
+                                [($order_type === "asc" ? "gt" : "lt") => $afterRegdate ? $afterRegdate : $afterRegdate]
+                            ]
+                        ];
+                    }
+                    $result = $client->search($params);
+                    $aggregations = $result['aggregations'];
+                    $group_by_document_srl = $aggregations['group_by_document_srl'];
+                    $buckets = $group_by_document_srl['buckets'];
+                    if($leftOffset > 0) {
+                        $leftOffset -= $chunkSize;
+                        $last = end($buckets);
+                        if("doc_".$sort_index === "doc_regdate") {
+                            $afterRegdate = $last['doc_regdate']['value_as_string'];
+                        } else {
+                            $afterListOrder = $last['doc_list_order']['value'];
+                        }
+
+                        continue;
+                    }
+
+
+                    $_result = $result;
+                    break;
+                }
+                break;
+
+            case "extra_vars":
+                while($leftOffset > 0) {
+                    $params = [
+                        'index' => $prefix.'document_extra_vars',
+                        'body' => [
+                            "size" => $chunkSize,
+                            'query' => [
+                                "bool" => [
+                                    "should" => [
+                                        ["match_phrase" => ["value.my_ngram" => $search_keyword]],
+                                        ["match" => ["value" => $search_keyword]]
+                                    ],
+                                    "filter" => [
+                                        ["term" => ["module_srl" => $module_srl]],
+                                        ["term" => ["var_idx" => $varIdx]]
+                                    ],
+                                    "minimum_should_match" => 1
+                                ]
+                            ],
+                            "fields" => ["document_srl"],
+                            'sort' => [
+                                "doc_".$sort_index => $order_type
+                            ],
+                            "_source" => false,
+                        ]
+                    ];
+                    if($category_srl) {
+                        $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
+                    }
+                    if($search_after) {
+                        $params['body']['search_after'] = $search_after;
+                    }
+                    $result = $client->search($params);
+                    $hits = $result['hits'];
+                    $hitsData = $hits['hits'];
+                    $leftOffset -= $chunkSize;
+                    $last = end($hitsData);
+                    $search_after = $last['sort'];
+                }
+                $_params = [
+                    'index' => $prefix.'document_extra_vars',
+                    'body' => [
+                        "size" => $afterSizeOffset,
+                        'query' => [
+                            "bool" => [
+                                "should" => [
+                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]],
+                                    ["match" => ["value" => $search_keyword]]
+                                ],
+                                "filter" => [
+                                    ["term" => ["module_srl" => $module_srl]],
+                                    ["term" => ["var_idx" => $varIdx]]
+                                ],
+                                "minimum_should_match" => 1
+                            ]
+                        ],
+                        "fields" => ["document_srl"],
+                        'sort' => [
+                            "doc_".$sort_index => $order_type
+                        ],
+                        "_source" => false,
+                    ]
+                ];
+                if($category_srl) {
+                    $_params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
+                }
+                if($search_after) {
+                    $_params['body']['search_after'] = $search_after;
+                }
+                $_result = $client->search($_params);
+
+                break;
+        }
+
+
+        $documentSrls = array();
+        $data = array();
+        $last_id = $total_count - (($page-1) * $list_count);
+        if(isset($_result['aggregations']) && isset($_result['aggregations']['group_by_document_srl'])) {
+            $groupByResult = $_result['aggregations']['group_by_document_srl'];
+            $bucket = $groupByResult['buckets'];
+            $bucketCount = count($bucket);
+            for($i=$afterFromOffset; $i<$bucketCount; $i++) {
+                $each = $bucket[$i];
+                $documentSrls[] = $each['key'];
+            }
+
+        } else {
+            $hits = $_result['hits'];
+            $hitsData = $hits['hits'];
+            $hitsDataCount = count($hitsData);
+            for($i=$afterFromOffset; $i<$hitsDataCount; $i++) {
+                $each = $hitsData[$i];
+                $documentSrls[] = $each['fields']['document_srl'][0];
+            }
+        }
+
+
+
+        $aDocument = $this->getDocuments($documentSrls, $isExtraVars, $columnList);
+        foreach($documentSrls as $eachDocument_srl) {
+            if(isset($aDocument[$eachDocument_srl]) && $aDocument[$eachDocument_srl]) {
+                $data[$last_id--] = $aDocument[$eachDocument_srl];
+            }
+        }
+
+        $total_page = max(1, ceil($total_count / $list_count));
+        $page_navigation = new PageHandler($total_count, $total_page, $page, $page_count);
+
+        $output = new BaseObject();
+        $output->total_count = $total_count;
+        $output->total_page = $total_page;
+        $output->page = $page;
+        $output->data = $data;
+        $output->page_navigation = $page_navigation;
+
+        return $output;
+    }
+
+    function getDocumentFromSearch($obj, $columnList) {
+        $config = $this->getModuleConfig();
+        if($config->use_search_after === "Y") {
+            return $this->getDocumentFromSearchFromSearchAfter($obj, $columnList);
+        }
+
+        $prefix = self::getElasticEnginePrefix();
+        $isExtraVars = $obj->isExtraVars;
+        $module_srl = $obj->module_srl;
+        $page = $obj->page;
+        $list_count = $obj->list_count;
+        $page_count = $obj->page_count;
+        $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
+        $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
+        $order_type = isset($obj->order_type) ? $obj->order_type : "desc";
         $search_target = $obj->search_target;
         $search_keyword = $obj->search_keyword;
         $params = null;
@@ -113,7 +791,18 @@ class elasticsearchModel extends elasticsearch
             $newColumnList[] = explode(".", $each)[1];
         }
 
-        switch ($search_target) {
+        $_searchTarget = $search_target;
+        $varIdx = -1;
+        if(strpos($_searchTarget, "extra_vars") !== false) {
+            $str = explode("extra_vars", $_searchTarget);
+            $varIdx = (int)$str[1];
+            if(!$varIdx) {
+                return null;
+            }
+            $_searchTarget = "extra_vars";
+        }
+
+        switch ($_searchTarget) {
             case "title_content" :
                 $params = [
                     'index' => $prefix.'documents',
@@ -125,23 +814,31 @@ class elasticsearchModel extends elasticsearch
                                 "must" => [
                                     ["bool" => [
                                         "should" => [
-                                            ["match_phrase" => ["title.nori_discard" => $search_keyword]],
-                                            ["match_phrase" => ["content.nori_discard" => $search_keyword]]
+                                            ["match_phrase" => ["title.my_ngram" => $search_keyword]],
+                                            ["match_phrase" => ["content.my_ngram" => $search_keyword]]
                                         ]
                                     ]]
-                                ],
-                                "filter" => [
-                                    ["match" => ["module_srl" => $module_srl]],
-                                    ["match" => ["status" => "PUBLIC"]],
                                 ]
                             ]
                         ],
+                        "fields" => ["document_srl"],
                         'sort' => [
                             $sort_index => $order_type
                         ],
-                        "_source" => $newColumnList,
+                        "_source" => false,
                     ]
                 ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
                 break;
 
             case "title":
@@ -153,19 +850,28 @@ class elasticsearchModel extends elasticsearch
                         'query' => [
                             "bool" => [
                                 "must" => [
-                                    ["term" => ["title.nori_discard" => $search_keyword]]
-                                ],
-                                "filter" => [
-                                    ["term" => ["module_srl" => $module_srl]]
+                                    ["match_phrase" => ["title.my_ngram" => $search_keyword]]
                                 ]
                             ]
                         ],
+                        "fields" => ["document_srl"],
                         'sort' => [
                             $sort_index => $order_type
                         ],
-                        "_source" => $newColumnList
+                        "_source" => false,
                     ]
                 ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
                 break;
 
             case "content":
@@ -177,26 +883,118 @@ class elasticsearchModel extends elasticsearch
                         'query' => [
                             "bool" => [
                                 "must" => [
-                                    ["match" => ["content.nori_discard" => $search_keyword]]
-                                ],
-                                "filter" => [
-                                    ["term" => ["module_srl" => $module_srl]]
+                                    ["match_phrase" => ["content.my_ngram" => $search_keyword]]
                                 ]
                             ]
                         ],
+                        "fields" => ["document_srl"],
                         'sort' => [
                             $sort_index => $order_type
                         ],
-                        "_source" => $newColumnList
+                        "_source" => false,
                     ]
-
                 ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
                 break;
+
+            case "comment":
+                $params = [
+                    'index' => $prefix.'comments',
+                    'body' => [
+                        "size" => 0,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "fields" => ["document_srl", "doc_".$sort_index],
+                        "_source" => false,
+                        'aggs' => [
+                            'group_by_document_srl' => [
+                                "terms" => [
+                                    "field" => "document_srl",
+                                    "size" => 500000,
+                                    //"order" => ["doc_".$sort_index => $order_type]
+                                ],
+                                'aggs' => [
+                                    'doc_regdate' => ["min" => ["field" => "doc_regdate"]],
+                                    'doc_list_order' => ["min" => ["field" => "doc_list_order"]],
+                                    'document_sort' => [
+                                        "bucket_sort" => [
+                                            'sort' => [
+                                                in_array($sort_index, array("list_order", "regdate")) ? "doc_".$sort_index : "_key" => $order_type
+                                            ],
+                                            "size" => $list_count,
+                                            "from" => max($page-1, 0) * $list_count,
+                                        ]
+                                    ]
+                                ]
+                            ],
+                            "document_count" => ["cardinality" => ["field"=>"document_srl"]]
+                        ],
+                    ]
+                ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["doc_category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
+                break;
+
+            case "extra_vars":
+                $params = [
+                    'index' => $prefix.'document_extra_vars',
+                    'body' => [
+                        "from" => max($page-1, 0) * $list_count,
+                        "size" => $list_count,
+                        'query' => [
+                            "bool" => [
+                                "should" => [
+                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]],
+                                    ["match" => ["value" => $search_keyword]]
+                                ],
+                                "filter" => [
+                                    ["term" => ["module_srl" => $module_srl]],
+                                    ["term" => ["var_idx" => $varIdx]]
+                                ],
+                                "minimum_should_match" => 1
+                            ]
+                        ],
+                        "fields" => ["document_srl"],
+                        'sort' => [
+                            "doc_".$sort_index => $order_type
+                        ],
+                        "_source" => false,
+                    ]
+                ];
+                if($category_srl) {
+                    $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
+                }
+                break;
+
         }
+
         if($params) {
             $client = self::getElasticEngineClient();
             $response = $client->search($params);
-            $output = $this->getListOutputFromQueryResponse($response, $page, $list_count, $page_count);
+            $output = $this->getDocumentListFromSearchResponse($response, $page, $list_count, $page_count, $isExtraVars, $columnList);
 
             return $output;
         }
@@ -204,88 +1002,105 @@ class elasticsearchModel extends elasticsearch
         return null;
     }
 
+    function getDocuments($documentSrls = array(), $isExtraVars, $columnList) {
+        $aDocument = array();
+        if(count($documentSrls) > 0) {
+            $args = new stdClass();
+            $args->document_srls = implode(',',$documentSrls);
+            $args->list_count = count($documentSrls);
+            $args->order_type = 'asc';
+            $documentOutput = executeQueryArray('document.getDocuments', $args, $columnList);
+            if($documentOutput->toBool()) {
+                foreach($documentOutput->data as $eachDoc) {
+                    $aDocument[$eachDoc->document_srl] = $eachDoc;
+                }
+            }
+        }
 
+        return $aDocument;
+    }
 
-    function getDocumentFromCommentContent($obj, $columnList = array()) {
-        $prefix = self::getElasticEnginePrefix();
-        $module_srl = $obj->module_srl;
-        $page = $obj->page;
-        $list_count = $obj->list_count;
-        $page_count = $obj->page_count;
-        $sort_index = $obj->sort_index;
-        $order_type = $obj->order_type;
-        $search_keyword = $obj->search_keyword;
-        $params = null;
-        if($prefix) {
-            $prefix .= "_";
+    function getDocumentList($obj, $columnList = array()) {
+        if(!in_array($obj->sort_index, array("regdate", "list_order", "user_id", "member_srl")) && !$obj->search_target) {
+            return null;
         }
-        if(!$page) {
-            $page = 1;
-        }
-        $newColumnList = array();
-        foreach($columnList as $each) {
-            $newColumnList[] = explode(".", $each)[1];
-        }
-        $params = [
-            'index' => $prefix.'comments',
-            'body' => [
-                "from" => max($page-1, 0) * $list_count,
-                "size" => $list_count,
-                'query' => [
-                    "bool" => [
-                        "must" => [
-                            ["match_phrase" => ["content.nori_discard" => $search_keyword]]
-                        ],
-                        "filter" => [
-                            ["term" => ["module_srl" => $module_srl]]
-                        ]
-                    ]
-                ],
-                'sort' => [
-                    $sort_index => $order_type
-                ],
-                "_source" => false
-            ]
-        ];
+
+        return $this->getDocumentFromSearch($obj, $columnList);
+    }
+
+    function getIndexList() {
         $client = self::getElasticEngineClient();
-        $response = $client->search($params);
-        $output = $this->getListOutputFromQueryResponse($response, $page, $list_count, $page_count);
-        var_dump($output);
-        exit();
+        try {
+            $indices = $client->cat()->indices(array('index' => '*'));
 
-        return $output;
-    }
-
-    function getDocumentFromExtraVars($obj, $columnList = array()) {
-
-    }
-
-    function getDocumentFromDocumentSrls($documentSrls = array()) {
-
-    }
-
-    function getDocumentExtraVars($obj) {
-
-    }
-
-
-
-
-    function getDocumentList($obj, $load_extra_vars=true, $columnList = array()) {
-
-
-        if($obj->search_target === "comment") {
-            return $this->getDocumentFromCommentContent($obj, $columnList);
-        } else if(strpos($obj->search_target, "extra_vars")) {
-
-        } else {
-            return $this->getDocumentFromDocumentSearch($obj, $columnList);
+            return $indices;
+        } catch(Exception $e) {
+            return null;
         }
 
-
-
+        return array();
     }
 
+    function hasIndices($indexNameArray = array()) {
+        $list = $this->getIndexList();
+        if($list === null) {
+            return array_fill(0, count($indexNameArray), false);
+        }
+        $hasIndices = array();
+        foreach($indexNameArray as $each) {
+            $hasIndices[] = array_search($each, array_column($list, 'index')) !== false;
+        }
 
+        return $hasIndices;
+    }
+
+    function getIndexDocument($indexName, $id) {
+        $client = self::getElasticEngineClient();
+        $params = [
+            'index' => $indexName,
+            'id' => $id,
+            '_source' => true
+        ];
+
+        $response = $client->get($params);
+
+        return $response;
+    }
+
+    function getLastDocumentSrl() {
+        $args = new stdClass();
+        $args->sort_index = "document_srl";
+        $args->order_type = "desc";
+        $output = executeQuery('elasticsearch.getLastDocumentSrl', $args);
+
+        return $output->toBool() && $output->data ? $output->data->document_srl : 0;
+    }
+
+    function getLastCommentSrl() {
+        $args = new stdClass();
+        $args->sort_index = "comment_srl";
+        $args->order_type = "desc";
+        $output = executeQuery('elasticsearch.getLastCommentSrl', $args);
+
+        return $output->toBool() && $output->data ? $output->data->comment_srl : 0;
+    }
+
+    function getModuleDefaultConfig() {
+        $config = new stdClass();
+        $config->use_alternate_search = "Y";
+        $config->use_search_after = "N";
+
+        return $config;
+    }
+
+    function getModuleConfig() {
+        $oModuleModel = getModel('module');
+        $config = $oModuleModel->getModuleConfig('elasticsearch');
+        if(!$config) {
+            $config = $this->getModuleDefaultConfig();
+        }
+
+        return $config;
+    }
 
 }

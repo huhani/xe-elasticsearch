@@ -1,0 +1,30 @@
+<query id="getImportDocument" action="select">
+    <tables>
+        <table name="documents" />
+    </tables>
+    <columns>
+        <column name="document_srl" />
+        <column name="module_srl" />
+        <column name="category_srl" />
+        <column name="title" />
+        <column name="content" />
+        <column name="user_name" />
+        <column name="nick_name" />
+        <column name="member_srl" />
+        <column name="email_address" />
+        <column name="tags" />
+        <column name="regdate" />
+        <column name="ipaddress" />
+        <column name="list_order" />
+        <column name="status" />
+        <column name="comment_status" />
+    </columns>
+    <conditions>
+        <condition operation="excess" column="document_srl" var="document_srl" filter="number" />
+        <condition operation="less" column="document_srl" var="end_document_srl" filter="number" pipe="and" />
+    </conditions>
+    <navigation>
+        <index var="sort_index" default="list_order" order="order_type" />
+        <list_count var="list_count" default="20" />
+    </navigation>
+</query>

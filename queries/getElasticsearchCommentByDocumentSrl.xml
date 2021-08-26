@@ -1,0 +1,36 @@
+<query id="getElasticsearchCommentByDocumentSrl" action="select">
+    <tables>
+        <table name="comments" />
+        <table name="documents" type="left join">
+            <conditions>
+                <condition operation="equal" column="documents.document_srl" default="comments.document_srl" pipe="and" />
+            </conditions>
+        </table>
+    </tables>
+    <columns>
+        <column name="comments.comment_srl" alias="comment_srl" />
+        <column name="comments.module_srl" alias="module_srl" />
+        <column name="comments.document_srl" alias="document_srl" />
+        <column name="comments.parent_srl" alias="parent_srl" />
+        <column name="comments.is_secret" alias="is_secret" />
+        <column name="comments.content" alias="content" />
+        <column name="comments.user_id" alias="user_id" />
+        <column name="comments.user_name" alias="user_name" />
+        <column name="comments.nick_name" alias="nick_name" />
+        <column name="comments.member_srl" alias="member_srl" />
+        <column name="comments.email_address" alias="email_address" />
+        <column name="comments.homepage" alias="homepage" />
+        <column name="comments.regdate" alias="regdate" />
+        <column name="comments.last_update" alias="last_update" />
+        <column name="comments.ipaddress" alias="ipaddress" />
+        <column name="comments.list_order" alias="list_order" />
+        <column name="comments.status" alias="status" />
+        <column name="documents.list_order" alias="doc_list_order" />
+        <column name="documents.regdate" alias="doc_regdate" />
+        <column name="documents.user_id" alias="doc_user_id" />
+        <column name="documents.member_srl" alias="doc_member_srl" />
+    </columns>
+    <conditions>
+        <condition operation="equal" column="comments.document_srl" var="document_srl" filter="number" />
+    </conditions>
+</query>

@@ -4,7 +4,22 @@
 		
 	</grants>
 	<actions>
-		        <action name="dispElasticsearchAdminModuleConfig" type="view" admin_index="true" />
+		        <action name="dispElasticsearchAdminModuleConfig" type="view" />
+		        <action name="dispElasticsearchAdminOtherSetting" type="view" />
+		        <action name="dispElasticsearchAdminIndexList" type="view" admin_index="true" />
+		        <action name="dispElasticsearchAdminIndexState" type="view" />
+		        <action name="dispElasticsearchAdminIndexMapping" type="view" />
+		        <action name="dispElasticsearchAdminIndexSetting" type="view" />
+		        <action name="dispElasticsearchAdminIndexDocumentList" type="view" />
+		        <action name="dispElasticsearchAdminIndexDocumentDetail" type="view" />
 
+		        <action name="procElasticsearchAdminIndexPurge" type="controller" />
+		        <action name="procElasticsearchAdminIndexDelete" type="controller" />
+		        <action name="procElasticsearchAdminIndexDocumentDelete" type="controller" />
+		        <action name="procElasticsearchAdminIndexDocumentManage" type="controller" />
+		        <action name="procElasticsearchAdminIndexCommentManage" type="controller" />
+		        <action name="procElasticsearchAdminIndexDocumentExtraVarsManage" type="controller" />
+		        <action name="procElasticsearchAdminModuleSetting" type="controller" />
+		        <action name="procElasticsearchAdminIndexRemapping" type="controller" />
 	</actions>
 </module>
