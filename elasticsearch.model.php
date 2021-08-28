@@ -272,15 +272,10 @@ class elasticsearchModel extends elasticsearch
                         ]
                     ]
                 ];
-                $filter = [];
-                $filter[] = ["match" => ["var_idx" => $varIdx]];
                 if($category_srl) {
-                    $filter[] = ["match" => ["doc_category_srl" => $category_srl]];
+                    $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
                 }
-                if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
-                }
-                $params['body']['query']['bool']['filter'] = $filter;
+
                 $result = $client->count($params);
                 return $result['count'];
         }
@@ -288,10 +283,685 @@ class elasticsearchModel extends elasticsearch
         return 0;
     }
 
+    function getIndexDocumentApproximatedOffset($obj, $total_count = -1) {
+        $compression = 50;
+
+        if($total_count === -1) {
+            $total_count = $this->getIndexDocumentSearchCount($obj);
+        }
+        if(!$total_count) {
+            return null;
+        }
+        $client = self::getElasticEngineClient();
+        $prefix = self::getElasticEnginePrefix();
+        if($prefix) {
+            $prefix .= "_";
+        }
+        $module_srl = $obj->module_srl;
+        $page = $obj->page;
+        if(!$page || $page < 1) {
+            $page = 1;
+        }
+        $list_count = $obj->list_count;
+        $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
+        $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
+        $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
+        $search_target = $obj->search_target;
+        $search_keyword = $obj->search_keyword;
+        $fromPage = max(0, $page-1);
+        $from = $fromPage * $list_count;
+        $percent = $from / $total_count * 100;
+        if($order_type === "desc") {
+            $percent = 100 - $percent;
+        }
+        $_searchTarget = $search_target;
+        $varIdx = -1;
+        if(strpos($_searchTarget, "extra_vars") !== false) {
+            $str = explode("extra_vars", $_searchTarget);
+            $varIdx = (int)$str[1];
+            if(!$varIdx) {
+                return null;
+            }
+            $_searchTarget = "extra_vars";
+        }
+
+        switch ($_searchTarget) {
+            case "title_content" :
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        "size" => 0,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["bool" => [
+                                        "should" => [
+                                            ["match_phrase" => ["title.my_ngram" => $search_keyword]],
+                                            ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                        ]
+                                    ]]
+                                ]
+                            ]
+                        ],
+                        "_source" => false,
+                        "aggs" => [
+                            'percentile' => [
+                                'percentiles' => [
+                                    "field" => $sort_index,
+                                    "percents" => $percent,
+                                    "tdigest" => ["compression" => $compression]
+                                ]
+                            ]
+                        ]
+
+                    ]
+                ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->search($params);
+                $aggregations = $result['aggregations'];
+                $percentile = $aggregations['percentile'];
+                $approximatedOffset = end($percentile['values']);
+
+                return $approximatedOffset;
+
+            case "title":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        "size" => 0,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["title.my_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "_source" => false,
+                        "aggs" => [
+                            'percentile' => [
+                                'percentiles' => [
+                                    "field" => $sort_index,
+                                    "percents" => $percent,
+                                    "tdigest" => ["compression" => $compression]
+                                ]
+                            ]
+                        ]
+
+                    ]
+                ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->search($params);
+                $aggregations = $result['aggregations'];
+                $percentile = $aggregations['percentile'];
+                $approximatedOffset = end($percentile['values']);
+
+                return $approximatedOffset;
+
+            case "content":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        "size" => 0,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "_source" => false,
+                        "aggs" => [
+                            'percentile' => [
+                                'percentiles' => [
+                                    "field" => $sort_index,
+                                    "percents" => $percent,
+                                    "tdigest" => ["compression" => $compression]
+                                ]
+                            ]
+                        ]
+
+                    ]
+                ];
+                $filter = [];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->search($params);
+                $aggregations = $result['aggregations'];
+                $percentile = $aggregations['percentile'];
+                $approximatedOffset = end($percentile['values']);
+
+                return $approximatedOffset;
+
+            case "extra_vars":
+                $params = [
+                    'index' => $prefix.'document_extra_vars',
+                    'body' => [
+                        "size" => 0,
+                        'query' => [
+                            "bool" => [
+                                "should" => [
+                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]],
+                                    ["match" => ["value" => $search_keyword]]
+                                ],
+                                "filter" => [
+                                    ["term" => ["module_srl" => $module_srl]],
+                                    ["term" => ["var_idx" => $varIdx]]
+                                ],
+                                "minimum_should_match" => 1
+                            ]
+                        ],
+                        "aggs" => [
+                            'percentile' => [
+                                'percentiles' => [
+                                    "field" => "doc_".$sort_index,
+                                    "percents" => $percent,
+                                    "tdigest" => ["compression" => $compression]
+                                ]
+                            ]
+                        ]
+
+                    ]
+                ];
+                if($category_srl) {
+                    $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
+                }
+                $result = $client->search($params);
+
+                $aggregations = $result['aggregations'];
+                $percentile = $aggregations['percentile'];
+                $approximatedOffset = end($percentile['values']);
+
+                return $approximatedOffset;
+        }
+
+        return null;
+    }
+
+    function getIndexAfterOffset($obj, $total_count = 0) {
+        $chunkSize = 10000;
+        if($total_count === -1) {
+            $total_count = $this->getIndexDocumentSearchCount($obj);
+        }
+        $client = self::getElasticEngineClient();
+        $prefix = self::getElasticEnginePrefix();
+        if($prefix) {
+            $prefix .= "_";
+        }
+        $module_srl = $obj->module_srl;
+        $page = $obj->page;
+        $list_count = $obj->list_count;
+        $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
+        $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
+        $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
+        $search_target = $obj->search_target;
+        $search_keyword = $obj->search_keyword;
+        $fromPage = max(0, $page-1);
+        $from = $fromPage * $list_count;
+
+
+        $_searchTarget = $search_target;
+        $varIdx = -1;
+        if(strpos($_searchTarget, "extra_vars") !== false) {
+            $str = explode("extra_vars", $_searchTarget);
+            $varIdx = (int)$str[1];
+            if(!$varIdx) {
+                return null;
+            }
+            $_searchTarget = "extra_vars";
+        }
+
+        $approximatedOffset = (int)$this->getIndexDocumentApproximatedOffset($obj, $total_count);
+        switch ($_searchTarget) {
+            case "title_content" :
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["bool" => [
+                                        "should" => [
+                                            ["match_phrase" => ["title.my_ngram" => $search_keyword]],
+                                            ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                        ]
+                                    ]]
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+                $filter = [];
+                $filter[] = ["range" => [$sort_index => [
+                    ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
+                ]]];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->count($params);
+                $count = $result['count'];
+                $diff = (int)($from-$count);
+                if($diff === 0) {
+                    return $approximatedOffset;
+                }
+
+                $params2 = [
+                    'index' => $prefix.'documents',
+                    'size' => abs($diff) + ($diff < 0 ? 1 : 0),
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["bool" => [
+                                        "should" => [
+                                            ["match_phrase" => ["title.my_ngram" => $search_keyword]],
+                                            ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                        ]
+                                    ]]
+                                ]
+                            ]
+                        ],
+                        "fields" => [$sort_index],
+                        "_source" => false
+                    ]
+                ];
+                $filter = [];
+                if($diff > 0) {
+                    if($order_type === "desc") {
+                        $filter[] = ["range" => [$sort_index => [
+                             "lte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            $sort_index => "desc"
+                        ];
+                    } else {
+                        $filter[] = ["range" => [$sort_index => [
+                            "gte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            $sort_index => "asc"
+                        ];
+                    }
+                } else {
+                    if($order_type === "desc") {
+                        $filter[] = ["range" => [$sort_index => [
+                            "gte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            $sort_index => "asc"
+                        ];
+                    } else {
+                        $filter[] = ["range" => [$sort_index => [
+                            "lte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            $sort_index => "desc"
+                        ];
+                    }
+                }
+
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params2['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->search($params2);
+                $hits = $result['hits'];
+                $hitsData = $hits['hits'];
+                $last = end($hitsData);
+
+                return end($last['fields'][$sort_index]);
+
+            case "title":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["title.my_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+                $filter = [];
+                $filter[] = ["range" => [$sort_index => [
+                    ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
+                ]]];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->count($params);
+                $count = $result['count'];
+                $diff = (int)($from-$count);
+                if($diff === 0) {
+                    return $approximatedOffset;
+                }
+
+                $params2 = [
+                    'index' => $prefix.'documents',
+                    'size' => abs($diff) + ($diff < 0 ? 1 : 0),
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["title.my_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "fields" => [$sort_index],
+                        "_source" => false
+                    ]
+                ];
+                $filter = [];
+                if($diff > 0) {
+                    if($order_type === "desc") {
+                        $filter[] = ["range" => [$sort_index => [
+                            "lte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            $sort_index => "desc"
+                        ];
+                    } else {
+                        $filter[] = ["range" => [$sort_index => [
+                            "gte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            $sort_index => "asc"
+                        ];
+                    }
+                } else {
+                    if($order_type === "desc") {
+                        $filter[] = ["range" => [$sort_index => [
+                            "gte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            $sort_index => "asc"
+                        ];
+                    } else {
+                        $filter[] = ["range" => [$sort_index => [
+                            "lte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            $sort_index => "desc"
+                        ];
+                    }
+                }
+
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params2['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->search($params2);
+                $hits = $result['hits'];
+                $hitsData = $hits['hits'];
+                $last = end($hitsData);
+
+                return end($last['fields'][$sort_index]);
+
+            case "content":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+                $filter = [];
+                $filter[] = ["range" => [$sort_index => [
+                    ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
+                ]]];
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->count($params);
+                $count = $result['count'];
+                $diff = (int)($from-$count);
+                if($diff === 0) {
+                    return $approximatedOffset;
+                }
+
+                $params2 = [
+                    'index' => $prefix.'documents',
+                    'size' => abs($diff) + ($diff < 0 ? 1 : 0),
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "fields" => [$sort_index],
+                        "_source" => false
+                    ]
+                ];
+                $filter = [];
+                if($diff > 0) {
+                    if($order_type === "desc") {
+                        $filter[] = ["range" => [$sort_index => [
+                            "lte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            $sort_index => "desc"
+                        ];
+                    } else {
+                        $filter[] = ["range" => [$sort_index => [
+                            "gte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            $sort_index => "asc"
+                        ];
+                    }
+                } else {
+                    if($order_type === "desc") {
+                        $filter[] = ["range" => [$sort_index => [
+                            "gte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            $sort_index => "asc"
+                        ];
+                    } else {
+                        $filter[] = ["range" => [$sort_index => [
+                            "lte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            $sort_index => "desc"
+                        ];
+                    }
+                }
+
+                if($category_srl) {
+                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                }
+                if($module_srl) {
+                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["status" => "PUBLIC"]];
+                }
+                if(count($filter) > 0) {
+                    $params2['body']['query']['bool']['filter'] = $filter;
+                }
+                $result = $client->search($params2);
+                $hits = $result['hits'];
+                $hitsData = $hits['hits'];
+                $last = end($hitsData);
+
+                return end($last['fields'][$sort_index]);
+
+            case "extra_vars":
+                $params = [
+                    'index' => $prefix.'document_extra_vars',
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "should" => [
+                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]],
+                                    ["match" => ["value" => $search_keyword]]
+                                ],
+                                "filter" => [
+                                    ["term" => ["module_srl" => $module_srl]],
+                                    ["term" => ["var_idx" => $varIdx]]
+                                ],
+                                "minimum_should_match" => 1
+                            ]
+                        ]
+                    ]
+                ];
+                $filter = [];
+                $filter[] = ["range" => ["doc_".$sort_index => [
+                    ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
+                ]]];
+                if($category_srl) {
+                    $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
+                }
+                $result = $client->count($params);
+                $count = $result['count'];
+                $diff = (int)($from-$count);
+                if($diff === 0) {
+                    return $approximatedOffset;
+                }
+
+                $params2 = [
+                    'index' => $prefix.'document_extra_vars',
+                    'size' => abs($diff) + ($diff < 0 ? 1 : 0),
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "should" => [
+                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]],
+                                    ["match" => ["value" => $search_keyword]]
+                                ],
+                                "filter" => [
+                                    ["term" => ["module_srl" => $module_srl]],
+                                    ["term" => ["var_idx" => $varIdx]]
+                                ],
+                                "minimum_should_match" => 1
+                            ]
+                        ],
+                        "fields" => ["doc_".$sort_index],
+                        "_source" => false
+                    ]
+                ];
+                $filter = [];
+                if($diff > 0) {
+                    if($order_type === "desc") {
+                        $filter[] = ["range" => ["doc_".$sort_index => [
+                            "lte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            "doc_".$sort_index => "desc"
+                        ];
+                    } else {
+                        $filter[] = ["range" => ["doc_".$sort_index => [
+                            "gte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            "doc_".$sort_index => "asc"
+                        ];
+                    }
+                } else {
+                    if($order_type === "desc") {
+                        $filter[] = ["range" => ["doc_".$sort_index => [
+                            "gte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            "doc_".$sort_index => "asc"
+                        ];
+                    } else {
+                        $filter[] = ["range" => ["doc_".$sort_index => [
+                            "lte" => $approximatedOffset
+                        ]]];
+                        $params2['body']['sort'] = [
+                            "doc_".$sort_index => "desc"
+                        ];
+                    }
+                }
+
+                if($category_srl) {
+                    $params2['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
+                }
+                $result = $client->search($params2);
+                $hits = $result['hits'];
+                $hitsData = $hits['hits'];
+                $last = end($hitsData);
+
+                return end($last['fields'][$sort_index]);
+
+        }
+
+        return null;
+    }
+
     function getDocumentFromSearchFromSearchAfter($obj, $columnList) {
         $chunkSize = 10000;
 
         $total_count = $this->getIndexDocumentSearchCount($obj);
+
         $prefix = self::getElasticEnginePrefix();
         $client = self::getElasticEngineClient();
         $isExtraVars = $obj->isExtraVars;
@@ -301,7 +971,7 @@ class elasticsearchModel extends elasticsearch
         $page_count = $obj->page_count;
         $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
         $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
-        $order_type = isset($obj->order_type) ? $obj->order_type : "desc";
+        $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
         $search_target = $obj->search_target;
         $search_keyword = $obj->search_keyword;
         $fromPage = max(0, $page-1);
@@ -334,55 +1004,11 @@ class elasticsearchModel extends elasticsearch
         $afterSizeOffset = $end - $moveOffset;
         switch ($_searchTarget) {
             case "title_content" :
-                while($leftOffset > 0) {
-                    $params = [
-                        'index' => $prefix.'documents',
-                        'body' => [
-                            "size" => $chunkSize,
-                            'query' => [
-                                "bool" => [
-                                    "must" => [
-                                        ["bool" => [
-                                            "should" => [
-                                                ["match_phrase" => ["title.my_ngram" => $search_keyword]],
-                                                ["match_phrase" => ["content.my_ngram" => $search_keyword]]
-                                            ]
-                                        ]]
-                                    ]
-                                ]
-                            ],
-                            "_source" => false,
-                            "sort" => [
-                                $sort_index => $order_type
-                            ]
-                        ]
-                    ];
-                    $filter = [];
-                    if($category_srl) {
-                        $filter[] = ["match" => ["category_srl" => $category_srl]];
-                    }
-                    if($module_srl) {
-                        $filter[] = ["match" => ["module_srl" => $module_srl]];
-                        $filter[] = ["match" => ["status" => "PUBLIC"]];
-                    }
-                    if($search_after) {
-                        $params['body']['search_after'] = $search_after;
-                    }
-                    if(count($filter) > 0) {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                    $result = $client->search($params);
-                    $hits = $result['hits'];
-                    $hitsData = $hits['hits'];
-                    $leftOffset -= $chunkSize;
-                    $last = end($hitsData);
-                    $search_after = $last['sort'];
-                }
-
+                $search_after = $this->getIndexAfterOffset($obj, $total_count);
                 $_params = [
                     'index' => $prefix.'documents',
                     'body' => [
-                        "size" => $afterSizeOffset,
+                        "size" => $list_count,
                         'query' => [
                             "bool" => [
                                 "must" => [
@@ -410,60 +1036,25 @@ class elasticsearchModel extends elasticsearch
                     $filter[] = ["match" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
+                if($search_after) {
+                    $filter[] = ["range" =>
+                        [$sort_index =>
+                            [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                        ]
+                    ];
+                }
                 if(count($filter) > 0) {
                     $_params['body']['query']['bool']['filter'] = $filter;
-                }
-                if($search_after) {
-                    $_params['body']['search_after'] = $search_after;
                 }
                 $_result = $client->search($_params);
                 break;
 
             case "title":
-                while($leftOffset > 0) {
-                    $params = [
-                        'index' => $prefix.'documents',
-                        'body' => [
-                            "size" => $chunkSize,
-                            'query' => [
-                                "bool" => [
-                                    "must" => [
-                                        ["match_phrase" => ["title.my_ngram" => $search_keyword]]
-                                    ]
-                                ]
-                            ],
-                            'sort' => [
-                                $sort_index => $order_type
-                            ],
-                            "_source" => false,
-                        ]
-                    ];
-                    $filter = [];
-                    if($category_srl) {
-                        $filter[] = ["match" => ["category_srl" => $category_srl]];
-                    }
-                    if($module_srl) {
-                        $filter[] = ["match" => ["module_srl" => $module_srl]];
-                        $filter[] = ["match" => ["status" => "PUBLIC"]];
-                    }
-
-                    if($search_after) {
-                        $params['body']['search_after'] = $search_after;
-                    }
-                    if(count($filter) > 0) {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                    $result = $client->search($params);
-                    $hits = $result['hits'];
-                    $hitsData = $hits['hits'];
-                    $leftOffset -= $chunkSize;
-                    $last = end($hitsData);
-                    $search_after = $last['sort'];
-                }
+                $search_after = $this->getIndexAfterOffset($obj, $total_count);
                 $_params = [
                     'index' => $prefix.'documents',
                     'body' => [
-                        "size" => $afterSizeOffset,
+                        "size" => $list_count,
                         'query' => [
                             "bool" => [
                                 "must" => [
@@ -486,60 +1077,25 @@ class elasticsearchModel extends elasticsearch
                     $filter[] = ["match" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
+                if($search_after) {
+                    $filter[] = ["range" =>
+                        [$sort_index =>
+                            [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                        ]
+                    ];
+                }
                 if(count($filter) > 0) {
                     $_params['body']['query']['bool']['filter'] = $filter;
-                }
-                if($search_after) {
-                    $_params['body']['search_after'] = $search_after;
                 }
                 $_result = $client->search($_params);
                 break;
 
             case "content":
-                while($leftOffset > 0) {
-                    $params = [
-                        'index' => $prefix.'documents',
-                        'body' => [
-                            "size" => $chunkSize,
-                            'query' => [
-                                "bool" => [
-                                    "must" => [
-                                        ["match_phrase" => ["content.my_ngram" => $search_keyword]]
-                                    ]
-                                ]
-                            ],
-                            'sort' => [
-                                $sort_index => $order_type
-                            ],
-                            "_source" => false,
-                        ]
-                    ];
-                    $filter = [];
-                    if($category_srl) {
-                        $filter[] = ["match" => ["category_srl" => $category_srl]];
-                    }
-                    if($module_srl) {
-                        $filter[] = ["match" => ["module_srl" => $module_srl]];
-                        $filter[] = ["match" => ["status" => "PUBLIC"]];
-                    }
-
-                    if($search_after) {
-                        $params['body']['search_after'] = $search_after;
-                    }
-                    if(count($filter) > 0) {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                    $result = $client->search($params);
-                    $hits = $result['hits'];
-                    $hitsData = $hits['hits'];
-                    $leftOffset -= $chunkSize;
-                    $last = end($hitsData);
-                    $search_after = $last['sort'];
-                }
+                $search_after = $this->getIndexAfterOffset($obj, $total_count);
                 $_params = [
                     'index' => $prefix.'documents',
                     'body' => [
-                        "size" => $afterSizeOffset,
+                        "size" => $list_count,
                         'query' => [
                             "bool" => [
                                 "must" => [
@@ -562,11 +1118,15 @@ class elasticsearchModel extends elasticsearch
                     $filter[] = ["match" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
+                if($search_after) {
+                    $filter[] = ["range" =>
+                        [$sort_index =>
+                            [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                        ]
+                    ];
+                }
                 if(count($filter) > 0) {
                     $_params['body']['query']['bool']['filter'] = $filter;
-                }
-                if($search_after) {
-                    $_params['body']['search_after'] = $search_after;
                 }
                 $_result = $client->search($_params);
                 break;
@@ -574,7 +1134,6 @@ class elasticsearchModel extends elasticsearch
             case "comment":
                 $afterRegdate = null;
                 $afterListOrder = null;
-
                 while(true) {
                     $params = [
                         'index' => $prefix.'comments',
@@ -583,7 +1142,8 @@ class elasticsearchModel extends elasticsearch
                             'query' => [
                                 "bool" => [
                                     "must" => [
-                                        ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                        ["match_phrase" => ["content.my_ngram" => $search_keyword]],
+                                        ["exists" => ["field" => "doc_".$sort_index]]
                                     ]
                                 ]
                             ],
@@ -643,48 +1203,11 @@ class elasticsearchModel extends elasticsearch
                 break;
 
             case "extra_vars":
-                while($leftOffset > 0) {
-                    $params = [
-                        'index' => $prefix.'document_extra_vars',
-                        'body' => [
-                            "size" => $chunkSize,
-                            'query' => [
-                                "bool" => [
-                                    "should" => [
-                                        ["match_phrase" => ["value.my_ngram" => $search_keyword]],
-                                        ["match" => ["value" => $search_keyword]]
-                                    ],
-                                    "filter" => [
-                                        ["term" => ["module_srl" => $module_srl]],
-                                        ["term" => ["var_idx" => $varIdx]]
-                                    ],
-                                    "minimum_should_match" => 1
-                                ]
-                            ],
-                            "fields" => ["document_srl"],
-                            'sort' => [
-                                "doc_".$sort_index => $order_type
-                            ],
-                            "_source" => false,
-                        ]
-                    ];
-                    if($category_srl) {
-                        $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
-                    }
-                    if($search_after) {
-                        $params['body']['search_after'] = $search_after;
-                    }
-                    $result = $client->search($params);
-                    $hits = $result['hits'];
-                    $hitsData = $hits['hits'];
-                    $leftOffset -= $chunkSize;
-                    $last = end($hitsData);
-                    $search_after = $last['sort'];
-                }
+                $search_after = $this->getIndexAfterOffset($obj, $total_count);
                 $_params = [
                     'index' => $prefix.'document_extra_vars',
                     'body' => [
-                        "size" => $afterSizeOffset,
+                        "size" => $list_count,
                         'query' => [
                             "bool" => [
                                 "should" => [
@@ -709,11 +1232,21 @@ class elasticsearchModel extends elasticsearch
                     $_params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
                 }
                 if($search_after) {
-                    $_params['body']['search_after'] = $search_after;
+                    $filter[] = ["range" =>
+                        [$sort_index =>
+                            [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                        ]
+                    ];
+                }
+                if(count($filter) > 0) {
+                    $_params['body']['query']['bool']['filter'] = $filter;
                 }
                 $_result = $client->search($_params);
 
                 break;
+
+            default:
+                return null;
         }
 
 
@@ -728,12 +1261,11 @@ class elasticsearchModel extends elasticsearch
                 $each = $bucket[$i];
                 $documentSrls[] = $each['key'];
             }
-
         } else {
             $hits = $_result['hits'];
             $hitsData = $hits['hits'];
             $hitsDataCount = count($hitsData);
-            for($i=$afterFromOffset; $i<$hitsDataCount; $i++) {
+            for($i=0; $i<$hitsDataCount; $i++) {
                 $each = $hitsData[$i];
                 $documentSrls[] = $each['fields']['document_srl'][0];
             }
@@ -766,7 +1298,6 @@ class elasticsearchModel extends elasticsearch
         if($config->use_search_after === "Y") {
             return $this->getDocumentFromSearchFromSearchAfter($obj, $columnList);
         }
-
         $prefix = self::getElasticEnginePrefix();
         $isExtraVars = $obj->isExtraVars;
         $module_srl = $obj->module_srl;
@@ -775,7 +1306,7 @@ class elasticsearchModel extends elasticsearch
         $page_count = $obj->page_count;
         $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
         $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
-        $order_type = isset($obj->order_type) ? $obj->order_type : "desc";
+        $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
         $search_target = $obj->search_target;
         $search_keyword = $obj->search_keyword;
         $params = null;
@@ -1021,8 +1552,12 @@ class elasticsearchModel extends elasticsearch
     }
 
     function getDocumentList($obj, $columnList = array()) {
-        if(!in_array($obj->sort_index, array("regdate", "list_order", "user_id", "member_srl")) && !$obj->search_target) {
+        if(!$obj->search_target) {
             return null;
+        }
+        if(!in_array($obj->sort_index, array("regdate", "list_order"))) {
+            $obj->sort_index = "regdate";
+            $obj->list_order = "desc";
         }
 
         return $this->getDocumentFromSearch($obj, $columnList);

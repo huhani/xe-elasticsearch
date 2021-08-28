@@ -18,14 +18,10 @@ class ElasticSearchInstall {
                     "my_ngram" => [
                         "tokenizer" => "my_t_ngram",
                         "filter" => ["lowercase", "asciifolding"],
-                        "char_filter" => ["html_strip"]
+                        //"char_filter" => ["html_strip"]
                     ]
                 ],
                 "tokenizer" => [
-                    "nori_t_discard" => [
-                        "type"=>"nori_tokenizer",
-                        "decompound_mode"=>"discard"
-                    ],
                     "my_t_ngram" => [
                         "type" => "ngram",
                         "min_gram" => 2,
@@ -51,9 +47,9 @@ class ElasticSearchInstall {
 
     private $indexList = [
         "documents" => [
-            "document_srl" => ["type" => "unsigned_long"],
-            "module_srl" => ["type" => "unsigned_long"],
-            "category_srl" => ["type" => "unsigned_long"],
+            "document_srl" => ["type" => "long"],
+            "module_srl" => ["type" => "long"],
+            "category_srl" => ["type" => "long"],
             //"lang_code" => ["type" => "keyword", "index" => false],
             //"is_notice" => ["type" => "keyword", "index" => false],
             "title" => ["type" => "text",
@@ -111,9 +107,9 @@ class ElasticSearchInstall {
             "comment_status" => ["type" => "keyword"],
         ],
         "document_extra_vars" => [
-            "document_srl" => ["type" => "unsigned_long"],
-            "module_srl" => ["type" => "unsigned_long"],
-            "var_idx" => ["type" => "unsigned_long"],
+            "document_srl" => ["type" => "long"],
+            "module_srl" => ["type" => "long"],
+            "var_idx" => ["type" => "long"],
             "lang_code" => ["type" => "keyword", "index" => false],
             "value" => ["type" => "text", "analyzer" => "standard",
                 "fields" => [
@@ -129,13 +125,13 @@ class ElasticSearchInstall {
             "doc_user_id" => ["type" => "keyword"],
             "doc_regdate" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
             "doc_member_srl" => ["type" => "long"],
-            "doc_category_srl" => ["type" => "unsigned_long"]
+            "doc_category_srl" => ["type" => "long"]
         ],
         "comments" => [
-            "comment_srl" => ["type" => "unsigned_long"],
-            "module_srl" => ["type" => "unsigned_long"],
-            "document_srl" => ["type" => "unsigned_long"],
-            "parent_srl" => ["type" => "unsigned_long"],
+            "comment_srl" => ["type" => "long"],
+            "module_srl" => ["type" => "long"],
+            "document_srl" => ["type" => "long"],
+            "parent_srl" => ["type" => "long"],
             "is_secret" => ["type" => "keyword"],
             "content" => ["type" => "text",
                 "analyzer" => "standard",
@@ -156,7 +152,7 @@ class ElasticSearchInstall {
             "member_srl" => ["type" => "long"],
             "email_address" => ["type" => "keyword"],
             "homepage" => ["type" => "keyword"],
-            //"uploaded_count" => ["type" => "unsigned_long"],
+            //"uploaded_count" => ["type" => "long"],
             "regdate" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
             "last_update" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
             "ipaddress" => ["type" => "ip"],
@@ -167,7 +163,7 @@ class ElasticSearchInstall {
             "doc_user_id" => ["type" => "keyword"],
             "doc_regdate" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
             "doc_member_srl" => ["type" => "long"],
-            "doc_category_srl" => ["type" => "unsigned_long"]
+            "doc_category_srl" => ["type" => "long"]
         ],
         /*       "files" => [
                    "file_srl" => ["type" => "unsigned_long"],
