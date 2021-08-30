@@ -787,7 +787,171 @@ class elasticsearchAdminModel extends elasticsearch
         return $result['count'];
     }
 
-    //documentList를 from이 아닌 searchAfter로 가져옴
+    function getIndexDocumentApproximatedOffset($obj, $total_count = -1) {
+        $oElasticsearchModel = getModel('elasticsearch');
+        $client = $oElasticsearchModel::getElasticEngineClient();
+        $compression = 50;
+        if($total_count === -1) {
+            $total_count = $this->getIndexDocumentSearchCount($obj);
+        }
+        $target_index = $obj->target_index;
+        $page = !isset($obj->page) || !$obj->page ? 1 : $obj->page;
+        $list_count= !isset($obj->list_count) || !$obj->list_count ? 50 : $obj->list_count;
+        $sort_index = !isset($obj->sort_index) || !$obj->sort_index ? null : $obj->sort_index;
+        $order_type = !isset($obj->order_type) || !$obj->order_type ? null : "desc";
+        $search_target = !isset($obj->search_target) || !$obj->search_target ? null : $obj->search_target;
+        $search_keyword = !isset($obj->search_keyword) || !$obj->search_keyword ? null : $obj->search_keyword;
+        $fromPage = max(0, $page-1);
+        $from = $fromPage * $list_count;
+        $percent = $from / $total_count * 100;
+        if($order_type === "desc") {
+            $percent = 100 - $percent;
+        }
+
+        $params = [
+            'index' => $target_index,
+            'body' => [
+                "size" => 0,
+                "_source" => false,
+                "aggs" => [
+                    'percentile' => [
+                        'percentiles' => [
+                            "field" => $sort_index,
+                            "percents" => $percent,
+                            "tdigest" => ["compression" => $compression]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        if($search_target && $search_keyword) {
+            $params['body']['query'] = [
+                "bool" => [
+                    "must" => [
+                        ["match" => [$search_target => $search_keyword]],
+                    ]
+                ]
+            ];
+        }
+
+        $result = $client->search($params);
+        $aggregations = $result['aggregations'];
+        $percentile = $aggregations['percentile'];
+        $approximatedOffset = end($percentile['values']);
+
+        return $approximatedOffset;
+
+    }
+
+    function getIndexAfterOffset($obj, $total_count = -1) {
+        if($total_count === -1) {
+            $total_count = $this->getIndexDocumentSearchCount($obj);
+        }
+        $oElasticsearchModel = getModel('elasticsearch');
+        $client = $oElasticsearchModel::getElasticEngineClient();
+        $target_index = $obj->target_index;
+        $page = !isset($obj->page) || !$obj->page ? 1 : $obj->page;
+        $list_count= !isset($obj->list_count) || !$obj->list_count ? 50 : $obj->list_count;
+        $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
+        $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
+        $search_target = $obj->search_target;
+        $search_keyword = $obj->search_keyword;
+        $fromPage = max(0, $page-1);
+        $from = $fromPage * $list_count;
+
+        $approximatedOffset = $this->getIndexDocumentApproximatedOffset($obj, $total_count);
+        $params = [
+            'index' => $target_index
+        ];
+        if($search_target && $search_keyword) {
+            $params['body']['query'] = [
+                "bool" => [
+                    "must" => [
+                        ["match" => [$search_target => $search_keyword]],
+                    ]
+                ]
+            ];
+        }
+        $filter = [];
+        $filter[] = ["range" => [$sort_index => [
+            ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
+        ]]];
+        if(count($filter) > 0) {
+            $params['body']['query']['bool']['filter'] = $filter;
+        }
+        $result = $client->count($params);
+        $count = $result['count'];
+        $diff = (int)($from-$count);
+        if($diff === 0) {
+            return $approximatedOffset;
+        }
+
+        $params2 = [
+            'index' => $target_index,
+            'size' => abs($diff) + ($diff < 0 ? 1 : 0),
+            'body' => [
+                "fields" => [$sort_index],
+                "_source" => false
+            ]
+        ];
+        $filter = [];
+        if($diff > 0) {
+            if($order_type === "desc") {
+                $filter[] = ["range" => [$sort_index => [
+                    "lte" => $approximatedOffset
+                ]]];
+                $params2['body']['sort'] = [
+                    $sort_index => "desc"
+                ];
+            } else {
+                $filter[] = ["range" => [$sort_index => [
+                    "gte" => $approximatedOffset
+                ]]];
+                $params2['body']['sort'] = [
+                    $sort_index => "asc"
+                ];
+            }
+        } else {
+            if($order_type === "desc") {
+                $filter[] = ["range" => [$sort_index => [
+                    "gte" => $approximatedOffset
+                ]]];
+                $params2['body']['sort'] = [
+                    $sort_index => "asc"
+                ];
+            } else {
+                $filter[] = ["range" => [$sort_index => [
+                    "lte" => $approximatedOffset
+                ]]];
+                $params2['body']['sort'] = [
+                    $sort_index => "desc"
+                ];
+            }
+        }
+
+        if($search_target && $search_keyword) {
+            $params2['body']['query'] = [
+                "bool" => [
+                    "must" => [
+                        ["match" => [$search_target => $search_keyword]],
+                    ]
+                ]
+            ];
+        }
+        if(count($filter) > 0) {
+            $params2['body']['query']['bool']['filter'] = $filter;
+        }
+        $result = $client->search($params2);
+        $hits = $result['hits'];
+        $hitsData = $hits['hits'];
+        $last = end($hitsData);
+
+        return end($last['fields'][$sort_index]);
+
+    }
+
+
     function getIndexDocumentListFromSearchAfter($obj) {
         $oElasticsearchModel = getModel('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
@@ -802,79 +966,64 @@ class elasticsearchAdminModel extends elasticsearch
         $search_target = !isset($obj->search_target) || !$obj->search_target ? null : $obj->search_target;
         $search_keyword = !isset($obj->search_keyword) || !$obj->search_keyword ? null : $obj->search_keyword;
         $columnList = !isset($obj->columnList) || !count($obj->columnList) ? ["*"] : $obj->columnList;
-        $fromPage = max(0, $page-1);
-        $endPage = $fromPage + 1;
-        $from = $fromPage * $list_count;
-        $end = $endPage * $list_count;
         $search_after = null;
-
-        $moveOffset = floor($from / 10000) * 10000;
-        $leftOffset = $moveOffset;
-        $afterFromOffset = $from - $moveOffset;
-        $afterSizeOffset = $end - $moveOffset;
-        while(true) {
-            $params = [
-                'index' => $target_index,
-                'body' => [
-                    "size" => $leftOffset > 0 ? 10000 : $afterSizeOffset,
-                    "_source" => false,
-                    "sort" => [
-                        $sort_index => $order_type
+        $search_after = $this->getIndexAfterOffset($obj, $total_count);
+        $params = [
+            'index' => $target_index,
+            'body' => [
+                "size" => $list_count,
+                "_source" => false,
+                "sort" => [
+                    $sort_index => $order_type
+                ]
+            ]
+        ];
+        if($search_target && $search_keyword) {
+            $params['body']['query'] = [
+                "bool" => [
+                    "must" => [
+                        ["match" => [$search_target => $search_keyword]],
                     ]
                 ]
             ];
-
-            if($search_target && $search_keyword) {
-                $params['body']['query'] = [
-                    "bool" => [
-                        "must" => [
-                            ["match" => [$search_target => $search_keyword]],
-                        ]
-                    ]
-                ];
-            }
-            if($search_after) {
-                $params['body']['search_after'] = $search_after;
-            }
-
-            if(!$leftOffset) {
-                $params['body']['fields'] = $columnList;
-            }
-            $result = $client->search($params);
-            $hits = $result['hits'];
-            $hitsData = $hits['hits'];
-            if($leftOffset > 0) {
-                $leftOffset -= 10000;
-                $last = end($hitsData);
-                $search_after = $last['sort'];
-                continue;
-            }
-
-            $data = array();
-            $last_id = $total_count - (($page-1) * $list_count);
-            $hitsDataCount = count($hitsData);
-            for($i=$afterFromOffset; $i<$hitsDataCount; $i++) {
-                $each = $hitsData[$i];
-                $obj = new stdClass();
-                foreach($each['fields'] as $key=>$val) {
-                    $obj->{$key} = $val[0];
-                }
-                $obj->_id = $each['_id'];
-                $data[$last_id--] = $obj;
-            }
-
-            $total_page = max(1, ceil($total_count / $list_count));
-            $page_navigation = new PageHandler($total_count, $total_page, $page, $page_count);
-
-            $output = new BaseObject();
-            $output->total_count = $total_count;
-            $output->total_page = $total_page;
-            $output->page = $page;
-            $output->data = $data;
-            $output->page_navigation = $page_navigation;
-
-            return $output;
         }
+        $params['body']['fields'] = $columnList;
+        if($search_after) {
+            $params['body']['query']['bool']['filter'] = ["range" =>
+                [$sort_index =>
+                    [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                ]
+            ];
+        }
+        $result = $client->search($params);
+        $hits = $result['hits'];
+        $hitsData = $hits['hits'];
+
+
+        $data = array();
+        $last_id = $total_count - (($page-1) * $list_count);
+        $hitsDataCount = count($hitsData);
+        for($i=0; $i<$hitsDataCount; $i++) {
+            $each = $hitsData[$i];
+            $obj = new stdClass();
+            foreach($each['fields'] as $key=>$val) {
+                $obj->{$key} = $val[0];
+            }
+            $obj->_id = $each['_id'];
+            $data[$last_id--] = $obj;
+        }
+
+        $total_page = max(1, ceil($total_count / $list_count));
+        $page_navigation = new PageHandler($total_count, $total_page, $page, $page_count);
+
+        $output = new BaseObject();
+        $output->total_count = $total_count;
+        $output->total_page = $total_page;
+        $output->page = $page;
+        $output->data = $data;
+        $output->page_navigation = $page_navigation;
+
+        return $output;
 
     }
 
