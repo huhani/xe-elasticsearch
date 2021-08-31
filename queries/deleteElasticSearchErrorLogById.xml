@@ -1,0 +1,8 @@
+<query id="deleteElasticSearchErrorLogById" action="delete">
+    <tables>
+        <table name="elasticsearch_error_logs" />
+    </tables>
+    <conditions>
+        <condition operation="in" column="error_id" var="error_id" notnull="notnull" />
+    </conditions>
+</query>

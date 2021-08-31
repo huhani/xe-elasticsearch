@@ -1,0 +1,16 @@
+<query id="getElasticSearchErrorLogList" action="select">
+    <tables>
+        <table name="elasticsearch_error_logs" />
+    </tables>
+    <columns>
+        <column name="*" />
+    </columns>
+    <conditions>
+    </conditions>
+    <navigation>
+        <index var="sort_index" default="error_id" order="order_type" />
+        <list_count var="list_count" default="20" />
+        <page_count var="page_count" default="10" />
+        <page var="page" default="1" />
+    </navigation>
+</query>

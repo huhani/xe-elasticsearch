@@ -763,6 +763,7 @@ class elasticsearchAdminModel extends elasticsearch
 
     function getIndexDocumentListCount($obj) {
         $oElasticsearchModel = getModel('elasticsearch');
+        $oElasticsearchController = getController('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
 
         $target_index = $obj->target_index;
@@ -782,13 +783,19 @@ class elasticsearchAdminModel extends elasticsearch
             ];
         }
 
-        $result = $client->count($params);
+        try {
+            $result = $client->count($params);
+        } catch(Exception $e) {
+            $oElasticsearchController->insertErrorLog('count', $params, $e);
+            return 0;
+        }
 
         return $result['count'];
     }
 
     function getIndexDocumentApproximatedOffset($obj, $total_count = -1) {
         $oElasticsearchModel = getModel('elasticsearch');
+        $oElasticsearchController = getController('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
         $compression = 50;
         if($total_count === -1) {
@@ -835,7 +842,14 @@ class elasticsearchAdminModel extends elasticsearch
             ];
         }
 
-        $result = $client->search($params);
+        try {
+            $result = $client->search($params);
+        } catch(Exception $e) {
+            $oElasticsearchController->insertErrorLog('search', $params, $e);
+            return false;
+        }
+
+
         $aggregations = $result['aggregations'];
         $percentile = $aggregations['percentile'];
         $approximatedOffset = end($percentile['values']);
@@ -849,6 +863,7 @@ class elasticsearchAdminModel extends elasticsearch
             $total_count = $this->getIndexDocumentSearchCount($obj);
         }
         $oElasticsearchModel = getModel('elasticsearch');
+        $oElasticsearchController = getController('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
         $target_index = $obj->target_index;
         $page = !isset($obj->page) || !$obj->page ? 1 : $obj->page;
@@ -861,6 +876,9 @@ class elasticsearchAdminModel extends elasticsearch
         $from = $fromPage * $list_count;
 
         $approximatedOffset = $this->getIndexDocumentApproximatedOffset($obj, $total_count);
+        if($approximatedOffset === false) {
+            return false;
+        }
         $params = [
             'index' => $target_index
         ];
@@ -880,7 +898,13 @@ class elasticsearchAdminModel extends elasticsearch
         if(count($filter) > 0) {
             $params['body']['query']['bool']['filter'] = $filter;
         }
-        $result = $client->count($params);
+        try {
+            $result = $client->count($params);
+        } catch(Exception $e) {
+            $oElasticsearchController->insertErrorLog('count', $params, $e);
+            return false;
+        }
+
         $count = $result['count'];
         $diff = (int)($from-$count);
         if($diff === 0) {
@@ -942,7 +966,13 @@ class elasticsearchAdminModel extends elasticsearch
         if(count($filter) > 0) {
             $params2['body']['query']['bool']['filter'] = $filter;
         }
-        $result = $client->search($params2);
+        try {
+            $result = $client->search($params2);
+        } catch(Exception $e) {
+            $oElasticsearchController->insertErrorLog('search', $params2, $e);
+            return false;
+        }
+
         $hits = $result['hits'];
         $hitsData = $hits['hits'];
         $last = end($hitsData);
@@ -954,6 +984,7 @@ class elasticsearchAdminModel extends elasticsearch
 
     function getIndexDocumentListFromSearchAfter($obj) {
         $oElasticsearchModel = getModel('elasticsearch');
+        $oElasticsearchController = getController('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
         $total_count = $this->getIndexDocumentListCount($obj);
 
@@ -995,22 +1026,28 @@ class elasticsearchAdminModel extends elasticsearch
                 ]
             ];
         }
-        $result = $client->search($params);
-        $hits = $result['hits'];
-        $hitsData = $hits['hits'];
-
+        try {
+            $result = $client->search($params);
+        } catch(Exception $e) {
+            $oElasticsearchController->insertErrorLog('search', $params, $e);
+            $result = null;
+        }
 
         $data = array();
         $last_id = $total_count - (($page-1) * $list_count);
-        $hitsDataCount = count($hitsData);
-        for($i=0; $i<$hitsDataCount; $i++) {
-            $each = $hitsData[$i];
-            $obj = new stdClass();
-            foreach($each['fields'] as $key=>$val) {
-                $obj->{$key} = $val[0];
+        if($result) {
+            $hits = $result['hits'];
+            $hitsData = $hits['hits'];
+            $hitsDataCount = count($hitsData);
+            for($i=0; $i<$hitsDataCount; $i++) {
+                $each = $hitsData[$i];
+                $obj = new stdClass();
+                foreach($each['fields'] as $key=>$val) {
+                    $obj->{$key} = $val[0];
+                }
+                $obj->_id = $each['_id'];
+                $data[$last_id--] = $obj;
             }
-            $obj->_id = $each['_id'];
-            $data[$last_id--] = $obj;
         }
 
         $total_page = max(1, ceil($total_count / $list_count));
@@ -1029,6 +1066,7 @@ class elasticsearchAdminModel extends elasticsearch
 
     function getIndexDocumentList($obj) {
         $oElasticsearchModel = getModel('elasticsearch');
+        $oElasticsearchController = getController('elasticsearch');
         $config = $oElasticsearchModel->getModuleConfig();
         if($config->use_search_after === "Y") {
             return $this->getIndexDocumentListFromSearchAfter($obj);
@@ -1069,32 +1107,59 @@ class elasticsearchAdminModel extends elasticsearch
                 $sort_index => $order_type
             ];
         }
-        $result = $client->search($params);
+        try {
+            $result = $client->search($params);
+        } catch(Exception $e) {
+            $oElasticsearchController->insertErrorLog('search', $params, $e);
+            $result = null;
+        }
 
-        $hits = $result['hits'];
-        $hitsData = $hits['hits'];
-        $total_count = $hits['total']['value'];
-        $total_page = max(1, ceil($total_count / $list_count));
         $data = array();
-        $last_id = $total_count - (($page-1) * $list_count);
-
-        foreach($hitsData as $each) {
-            $obj = new stdClass();
-            foreach($each['fields'] as $key=>$val) {
-                $obj->{$key} = $val[0];
+        if($result) {
+            $hits = $result['hits'];
+            $hitsData = $hits['hits'];
+            $total_count = $hits['total']['value'];
+            $total_page = max(1, ceil($total_count / $list_count));
+            $last_id = $total_count - (($page-1) * $list_count);
+            foreach($hitsData as $each) {
+                $obj = new stdClass();
+                foreach($each['fields'] as $key=>$val) {
+                    $obj->{$key} = $val[0];
+                }
+                $obj->_id = $each['_id'];
+                $data[$last_id--] = $obj;
             }
-            $obj->_id = $each['_id'];
-            $data[$last_id--] = $obj;
+        } else {
+            $total_count = 0;
         }
 
         $page_navigation = new PageHandler($total_count, $total_page, $page, $page_count);
-
         $output = new BaseObject();
         $output->total_count = $total_count;
         $output->total_page = $total_page;
         $output->page = $page;
         $output->data = $data;
         $output->page_navigation = $page_navigation;
+
+        return $output;
+    }
+
+    function getErrorLogList($obj) {
+        $page = isset($obj->page) ? $obj->page : 1;
+        $args = new stdClass();
+        $args->page = $page;
+        $args->sort_index = "error_id";
+        $args->order_type = "desc";
+
+        $output = executeQueryArray('elasticsearch.getElasticSearchErrorLogList', $args);
+
+        return $output;
+    }
+
+    function getErrorLog($error_id = -1) {
+        $args = new stdClass();
+        $args->error_id = $error_id;
+        $output = executeQuery('elasticsearch.getErrorLogById', $args);
 
         return $output;
     }

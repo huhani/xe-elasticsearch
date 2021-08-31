@@ -197,4 +197,26 @@ class elasticsearchAdminController extends elasticsearch
         $oElasticsearchController->remappingIndices();
     }
 
+    function procElasticsearchAdminErrorLogDelete() {
+        $oElasticsearchController = getController('elasticsearch');
+        $arr = array();
+        $error_id = Context::get('error_id');
+        if($error_id && is_array($error_id)) {
+            $arr = $error_id;
+        } else if($error_id) {
+            $arr[] = $error_id;
+        }
+
+        $output = $oElasticsearchController->deleteErrorLog($arr);
+
+        return $output;
+    }
+
+    function procElasticsearchAdminErrorLogDeleteAll() {
+        $oElasticsearchController = getController('elasticsearch');
+        $output = $oElasticsearchController->deleteErrorLogsAll();
+
+        return $output;
+    }
+
 }

@@ -1,0 +1,5 @@
+<query id="deleteElasticSearchErrorLogAll" action="delete">
+    <tables>
+        <table name="elasticsearch_error_logs" />
+    </tables>
+</query>

@@ -115,6 +115,7 @@ class elasticsearchModel extends elasticsearch
     }
 
     function getIndexDocumentSearchCount($obj) {
+        $oElasticsearchController = getController('elasticsearch');
         $client = self::getElasticEngineClient();
         $prefix = self::getElasticEnginePrefix();
         if($prefix) {
@@ -166,8 +167,14 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $params['body']['query']['bool']['filter'] = $filter;
                 }
-                $result = $client->count($params);
-                return $result['count'];
+                try {
+                    $result = $client->count($params);
+                    return $result['count'];
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('count', $params, $e);
+                }
+
+                return false;
 
             case "title":
                 $params = [
@@ -193,8 +200,14 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $params['body']['query']['bool']['filter'] = $filter;
                 }
-                $result = $client->count($params);
-                return $result['count'];
+                try {
+                    $result = $client->count($params);
+                    return $result['count'];
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('count', $params, $e);
+                }
+
+                return false;
 
             case "content":
                 $params = [
@@ -220,8 +233,14 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $params['body']['query']['bool']['filter'] = $filter;
                 }
-                $result = $client->count($params);
-                return $result['count'];
+                try {
+                    $result = $client->count($params);
+                    return $result['count'];
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('count', $params, $e);
+                }
+
+                return false;
 
             case "comment":
                 $params = [
@@ -250,8 +269,16 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $params['body']['query']['bool']['filter'] = $filter;
                 }
-                $result = $client->search($params);
-                return $result['aggregations']['document_count']['value'];
+
+                try {
+                    $result = $client->search($params);
+                    return $result['aggregations']['document_count']['value'];
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $params, $e);
+                }
+
+                return false;
+
 
             case "extra_vars":
                 $params = [
@@ -276,16 +303,22 @@ class elasticsearchModel extends elasticsearch
                     $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
                 }
 
-                $result = $client->count($params);
-                return $result['count'];
+                try {
+                    $result = $client->count($params);
+                    return $result['count'];
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('count', $params, $e);
+                }
+
+                return false;
         }
 
         return 0;
     }
 
     function getIndexDocumentApproximatedOffset($obj, $total_count = -1) {
+        $oElasticsearchController = getController('elasticsearch');
         $compression = 50;
-
         if($total_count === -1) {
             $total_count = $this->getIndexDocumentSearchCount($obj);
         }
@@ -367,7 +400,13 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $params['body']['query']['bool']['filter'] = $filter;
                 }
-                $result = $client->search($params);
+                try {
+                    $result = $client->search($params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $params, $e);
+                    return false;
+                }
+
                 $aggregations = $result['aggregations'];
                 $percentile = $aggregations['percentile'];
                 $approximatedOffset = end($percentile['values']);
@@ -410,7 +449,12 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $params['body']['query']['bool']['filter'] = $filter;
                 }
-                $result = $client->search($params);
+                try {
+                    $result = $client->search($params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $params, $e);
+                    return false;
+                }
                 $aggregations = $result['aggregations'];
                 $percentile = $aggregations['percentile'];
                 $approximatedOffset = end($percentile['values']);
@@ -453,7 +497,12 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $params['body']['query']['bool']['filter'] = $filter;
                 }
-                $result = $client->search($params);
+                try {
+                    $result = $client->search($params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $params, $e);
+                    return false;
+                }
                 $aggregations = $result['aggregations'];
                 $percentile = $aggregations['percentile'];
                 $approximatedOffset = end($percentile['values']);
@@ -493,7 +542,12 @@ class elasticsearchModel extends elasticsearch
                 if($category_srl) {
                     $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
                 }
-                $result = $client->search($params);
+                try {
+                    $result = $client->search($params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $params, $e);
+                    return false;
+                }
 
                 $aggregations = $result['aggregations'];
                 $percentile = $aggregations['percentile'];
@@ -506,6 +560,7 @@ class elasticsearchModel extends elasticsearch
     }
 
     function getIndexAfterOffset($obj, $total_count = 0) {
+        $oElasticsearchController = getController('elasticsearch');
         $chunkSize = 10000;
         if($total_count === -1) {
             $total_count = $this->getIndexDocumentSearchCount($obj);
@@ -539,6 +594,9 @@ class elasticsearchModel extends elasticsearch
         }
 
         $approximatedOffset = (int)$this->getIndexDocumentApproximatedOffset($obj, $total_count);
+        if($approximatedOffset === false) {
+            return false;
+        }
         switch ($_searchTarget) {
             case "title_content" :
                 $params = [
@@ -572,7 +630,14 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $params['body']['query']['bool']['filter'] = $filter;
                 }
-                $result = $client->count($params);
+
+                try {
+                    $result = $client->count($params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('count', $params, $e);
+                    return false;
+                }
+
                 $count = $result['count'];
                 $diff = (int)($from-$count);
                 if($diff === 0) {
@@ -644,7 +709,12 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $params2['body']['query']['bool']['filter'] = $filter;
                 }
-                $result = $client->search($params2);
+                try {
+                    $result = $client->search($params2);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $params2, $e);
+                    return false;
+                }
                 $hits = $result['hits'];
                 $hitsData = $hits['hits'];
                 $last = end($hitsData);
@@ -678,7 +748,12 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $params['body']['query']['bool']['filter'] = $filter;
                 }
-                $result = $client->count($params);
+                try {
+                    $result = $client->count($params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('count', $params, $e);
+                    return false;
+                }
                 $count = $result['count'];
                 $diff = (int)($from-$count);
                 if($diff === 0) {
@@ -745,7 +820,12 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $params2['body']['query']['bool']['filter'] = $filter;
                 }
-                $result = $client->search($params2);
+                try {
+                    $result = $client->search($params2);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $params2, $e);
+                    return false;
+                }
                 $hits = $result['hits'];
                 $hitsData = $hits['hits'];
                 $last = end($hitsData);
@@ -846,7 +926,12 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $params2['body']['query']['bool']['filter'] = $filter;
                 }
-                $result = $client->search($params2);
+                try {
+                    $result = $client->search($params2);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $params2, $e);
+                    return false;
+                }
                 $hits = $result['hits'];
                 $hitsData = $hits['hits'];
                 $last = end($hitsData);
@@ -879,7 +964,13 @@ class elasticsearchModel extends elasticsearch
                 if($category_srl) {
                     $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
                 }
-                $result = $client->count($params);
+                try {
+                    $result = $client->count($params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('count', $params, $e);
+                    return false;
+                }
+
                 $count = $result['count'];
                 $diff = (int)($from-$count);
                 if($diff === 0) {
@@ -945,7 +1036,12 @@ class elasticsearchModel extends elasticsearch
                 if($category_srl) {
                     $params2['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
                 }
-                $result = $client->search($params2);
+                try {
+                    $result = $client->search($params2);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $params2, $e);
+                    return false;
+                }
                 $hits = $result['hits'];
                 $hitsData = $hits['hits'];
                 $last = end($hitsData);
@@ -959,7 +1055,7 @@ class elasticsearchModel extends elasticsearch
 
     function getDocumentFromSearchFromSearchAfter($obj, $columnList) {
         $chunkSize = 10000;
-
+        $oElasticsearchController = getController('elasticsearch');
         $total_count = $this->getIndexDocumentSearchCount($obj);
 
         $prefix = self::getElasticEnginePrefix();
@@ -1046,7 +1142,14 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $_params['body']['query']['bool']['filter'] = $filter;
                 }
-                $_result = $client->search($_params);
+
+                try {
+                    $_result = $client->search($_params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $_params, $e);
+                    $_result = null;
+                }
+
                 break;
 
             case "title":
@@ -1087,7 +1190,12 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $_params['body']['query']['bool']['filter'] = $filter;
                 }
-                $_result = $client->search($_params);
+                try {
+                    $_result = $client->search($_params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $_params, $e);
+                    $_result = null;
+                }
                 break;
 
             case "content":
@@ -1128,7 +1236,12 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $_params['body']['query']['bool']['filter'] = $filter;
                 }
-                $_result = $client->search($_params);
+                try {
+                    $_result = $client->search($_params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $_params, $e);
+                    $_result = null;
+                }
                 break;
 
             case "comment":
@@ -1180,24 +1293,30 @@ class elasticsearchModel extends elasticsearch
                             ]
                         ];
                     }
-                    $result = $client->search($params);
-                    $aggregations = $result['aggregations'];
-                    $group_by_document_srl = $aggregations['group_by_document_srl'];
-                    $buckets = $group_by_document_srl['buckets'];
-                    if($leftOffset > 0) {
-                        $leftOffset -= $chunkSize;
-                        $last = end($buckets);
-                        if("doc_".$sort_index === "doc_regdate") {
-                            $afterRegdate = $last['doc_regdate']['value_as_string'];
-                        } else {
-                            $afterListOrder = $last['doc_list_order']['value'];
+
+                    try {
+                        $result = $client->search($params);
+                        $aggregations = $result['aggregations'];
+                        $group_by_document_srl = $aggregations['group_by_document_srl'];
+                        $buckets = $group_by_document_srl['buckets'];
+                        if($leftOffset > 0) {
+                            $leftOffset -= $chunkSize;
+                            $last = end($buckets);
+                            if("doc_".$sort_index === "doc_regdate") {
+                                $afterRegdate = $last['doc_regdate']['value_as_string'];
+                            } else {
+                                $afterListOrder = $last['doc_list_order']['value'];
+                            }
+
+                            continue;
                         }
 
-                        continue;
+                        $_result = $result;
+                    } catch(Exception $e) {
+                        $oElasticsearchController->insertErrorLog('search', $params, $e);
+                        $_result = null;
                     }
 
-
-                    $_result = $result;
                     break;
                 }
                 break;
@@ -1241,7 +1360,12 @@ class elasticsearchModel extends elasticsearch
                 if(count($filter) > 0) {
                     $_params['body']['query']['bool']['filter'] = $filter;
                 }
-                $_result = $client->search($_params);
+                try {
+                    $_result = $client->search($_params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $_params, $e);
+                    $_result = null;
+                }
 
                 break;
 
@@ -1253,25 +1377,25 @@ class elasticsearchModel extends elasticsearch
         $documentSrls = array();
         $data = array();
         $last_id = $total_count - (($page-1) * $list_count);
-        if(isset($_result['aggregations']) && isset($_result['aggregations']['group_by_document_srl'])) {
-            $groupByResult = $_result['aggregations']['group_by_document_srl'];
-            $bucket = $groupByResult['buckets'];
-            $bucketCount = count($bucket);
-            for($i=$afterFromOffset; $i<$bucketCount; $i++) {
-                $each = $bucket[$i];
-                $documentSrls[] = $each['key'];
-            }
-        } else {
-            $hits = $_result['hits'];
-            $hitsData = $hits['hits'];
-            $hitsDataCount = count($hitsData);
-            for($i=0; $i<$hitsDataCount; $i++) {
-                $each = $hitsData[$i];
-                $documentSrls[] = $each['fields']['document_srl'][0];
+        if($_result !== null) {
+            if(isset($_result['aggregations']) && isset($_result['aggregations']['group_by_document_srl'])) {
+                $groupByResult = $_result['aggregations']['group_by_document_srl'];
+                $bucket = $groupByResult['buckets'];
+                $bucketCount = count($bucket);
+                for($i=$afterFromOffset; $i<$bucketCount; $i++) {
+                    $each = $bucket[$i];
+                    $documentSrls[] = $each['key'];
+                }
+            } else {
+                $hits = $_result['hits'];
+                $hitsData = $hits['hits'];
+                $hitsDataCount = count($hitsData);
+                for($i=0; $i<$hitsDataCount; $i++) {
+                    $each = $hitsData[$i];
+                    $documentSrls[] = $each['fields']['document_srl'][0];
+                }
             }
         }
-
-
 
         $aDocument = $this->getDocuments($documentSrls, $isExtraVars, $columnList);
         foreach($documentSrls as $eachDocument_srl) {
@@ -1524,7 +1648,14 @@ class elasticsearchModel extends elasticsearch
 
         if($params) {
             $client = self::getElasticEngineClient();
-            $response = $client->search($params);
+            $oElasticsearchController = getController('elasticsearch');
+            try {
+                $response = $client->search($params);
+            } catch(Exception $e) {
+                $oElasticsearchController->insertErrorLog('search', $params, $e);
+                return null;
+            }
+            
             $output = $this->getDocumentListFromSearchResponse($response, $page, $list_count, $page_count, $isExtraVars, $columnList);
 
             return $output;

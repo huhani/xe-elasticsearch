@@ -37,8 +37,6 @@ class elasticsearchController extends elasticsearch
         if($document_srl && $search_target && $search_keyword && !$page) {
             Context::set("page", 1);
         }
-
-        $act = Context::get('');
     }
 
     function triggerAfterInsertDocument(&$obj) {
@@ -178,7 +176,11 @@ class elasticsearchController extends elasticsearch
                 ]
             ];
 
-            $response = $client->updateByQuery($params);
+            try {
+                $response = $client->updateByQuery($params);
+            } catch(Exception $e) {
+                $this->insertErrorLog('updateByQuery', $params, $e);
+            }
         }
 
     }
@@ -212,7 +214,11 @@ class elasticsearchController extends elasticsearch
                     ]
                 ]
             ];
-            $response = $client->updateByQuery($params);
+            try {
+                $response = $client->updateByQuery($params);
+            } catch(Exception $e) {
+                $this->insertErrorLog('updateByQuery', $params, $e);
+            }
         }
 
     }
@@ -253,8 +259,7 @@ class elasticsearchController extends elasticsearch
             $responses = $client->index($params);
             $this->insertExtraVars($obj->document_srl, $docData['list_order'], $docData['user_id'], $docData['regdate'], $docData['member_srl']);
         } catch(Exception $e) {
-            print_r($e);
-            exit();
+            $this->insertErrorLog('index', $params, $e);
         }
     }
 
@@ -315,8 +320,7 @@ class elasticsearchController extends elasticsearch
         try {
             $responses = $client->index($params);
         } catch(Exception $e) {
-            print_r($e);
-            exit();
+            $this->insertErrorLog('index', $params, $e);
         }
     }
 
@@ -351,13 +355,12 @@ class elasticsearchController extends elasticsearch
             $paramsArray['body'][] = $cmtIndex;
             $paramsArray['body'][] = $comment;
         }
-
-        $response = $client->bulk($paramsArray);
-        foreach($response['items'] as $each) {
-            if($each['index']['result'] !== "created") {
-                var_dump($each);
-            }
+        try {
+            $response = $client->bulk($paramsArray);
+        } catch(Exception $e) {
+            $this->insertErrorLog('bulk', $paramsArray, $e);
         }
+
     }
 
     function deleteComment($comment_srl) {
@@ -396,9 +399,9 @@ class elasticsearchController extends elasticsearch
         try {
             $responses = $client->deleteByQuery($query);
         } catch(Exception $e) {
-            print_r($e);
-            exit();
+            $this->insertErrorLog('deleteByQuery', $query, $e);
         }
+
     }
 
     function insertExtraVars($document_srl, $list_order, $user_id, $regdate, $member_srl) {
@@ -439,13 +442,7 @@ class elasticsearchController extends elasticsearch
         try {
             $response = $client->bulk($paramsArray);
         } catch(Exception $e) {
-            print_r($e);
-            exit();
-        }
-        foreach($response['items'] as $each) {
-            if($each['index']['result'] !== "created") {
-                //var_dump($each);
-            }
+            $this->insertErrorLog('bulk', $paramsArray, $e);
         }
     }
 
@@ -475,8 +472,7 @@ class elasticsearchController extends elasticsearch
         try {
             $responses = $client->deleteByQuery($query);
         } catch(Exception $e) {
-            print_r($e);
-            exit();
+            $this->insertErrorLog('deleteByQuery', $query, $e);
         }
     }
 
@@ -504,8 +500,7 @@ class elasticsearchController extends elasticsearch
         try {
             $responses = $client->deleteByQuery($query);
         } catch(Exception $e) {
-            print_r($e);
-            exit();
+            $this->insertErrorLog('deleteByQuery', $query, $e);
         }
     }
 
@@ -533,8 +528,7 @@ class elasticsearchController extends elasticsearch
         try {
             $responses = $client->deleteByQuery($query);
         } catch(Exception $e) {
-            print_r($e);
-            exit();
+            $this->insertErrorLog('deleteByQuery', $query, $e);
         }
     }
 
@@ -562,8 +556,7 @@ class elasticsearchController extends elasticsearch
         try {
             $responses = $client->deleteByQuery($query);
         } catch(Exception $e) {
-            print_r($e);
-            exit();
+            $this->insertErrorLog('deleteByQuery', $query, $e);
         }
     }
 
@@ -574,9 +567,12 @@ class elasticsearchController extends elasticsearch
 
         $oElasticsearchModel = getModel('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
+        $params = array("index"=> $indexName);
         try {
-            $response = $client->indices()->delete(array("index"=> $indexName));
-        } catch(Exception $e) {}
+            $response = $client->indices()->delete($params);
+        } catch(Exception $e) {
+            $this->insertErrorLog('deleteIndex', $params, $e);
+        }
 
         return true;
     }
@@ -588,9 +584,11 @@ class elasticsearchController extends elasticsearch
             'index' => [$indexName],
             'only_expunge_deletes' => true
         ];
-        $response = $client->indices()->forcemerge($params);
-
-        return $response;
+        try {
+            $response = $client->indices()->forcemerge($params);
+        } catch(Exception $e) {
+            $this->insertErrorLog('forcemerge', $params, $e);
+        }
     }
 
     function deleteIndexDocument($indexName, $id) {
@@ -600,14 +598,11 @@ class elasticsearchController extends elasticsearch
             'index' => $indexName,
             'id' => $id
         ];
-
         try {
             $responses = $client->delete($params);
-
             return $responses;
         } catch(Exception $e) {
-            //print_r($e);
-            //exit();
+            $this->insertErrorLog('delete', $params, $e);
         }
     }
 
@@ -630,8 +625,7 @@ class elasticsearchController extends elasticsearch
 
             return $responses;
         } catch(Exception $e) {
-            print_r($e);
-            exit();
+            $this->insertErrorLog('deleteByQuery', $query, $e);
         }
     }
 
@@ -658,8 +652,7 @@ class elasticsearchController extends elasticsearch
 
             return $responses;
         } catch(Exception $e) {
-            print_r($e);
-            exit();
+            $this->insertErrorLog('deleteByQuery', $query, $e);
         }
     }
 
@@ -686,8 +679,7 @@ class elasticsearchController extends elasticsearch
 
             return $responses;
         } catch(Exception $e) {
-            print_r($e);
-            exit();
+            $this->insertErrorLog('deleteByQuery', $query, $e);
         }
     }
 
@@ -713,8 +705,7 @@ class elasticsearchController extends elasticsearch
 
             return $responses;
         } catch(Exception $e) {
-            print_r($e);
-            exit();
+            $this->insertErrorLog('deleteByQuery', $query, $e);
         }
     }
 
@@ -723,6 +714,72 @@ class elasticsearchController extends elasticsearch
         $installer = $oElasticsearchAdminModel->getElasticSearchInstall();
         $installer->removeIndexes();
         $installer->installIndexes();
+    }
+
+    function insertErrorLog($type, array $params, Exception $error){
+        $logged_info = Context::get('logged_info');
+        $act = Context::get('act');
+        $module = Context::get('module');
+        $member_srl = $logged_info ? $logged_info->member_srl : 0;
+        $nick_name = $logged_info ? $logged_info->nick_name : null;
+        $request_uri = $_SERVER['REQUEST_URI'];
+        $ipaddress = null;
+        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+            $ipaddress = $_SERVER['HTTP_CLIENT_IP'];
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $ipaddress = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        } else {
+            $ipaddress = $_SERVER['REMOTE_ADDR'];
+        }
+        $regdate = date("YmdHis");
+        $params_json = $params ? json_encode($params, JSON_PRETTY_PRINT) : null;
+
+        $errorMsgJSON = @json_decode($error->getMessage());
+        if(!$errorMsgJSON) {
+            $errorMsgJSON = $error->getMessage();
+        }
+        $error_json  = json_encode(array(
+            'error' => array(
+                'msg' => $errorMsgJSON,
+                'code' => $error->getCode(),
+                'file' => $error->getFile(),
+                'line' => $error->getLine(),
+                'trace' => $error->getTrace()
+            ),
+        ), JSON_PRETTY_PRINT);
+
+        $args = new stdClass();
+        $args->act = $act;
+        $args->module = $module;
+        $args->type = $type;
+        $args->params = $params_json;
+        $args->error = $error_json;
+        $args->member_srl = $member_srl;
+        $args->nick_name = $nick_name;
+        $args->request_uri = $request_uri;
+        $args->ipaddress = $ipaddress;
+        $args->regdate = $regdate;
+        $output = executeQuery('elasticsearch.insertElasticSearchErrorLog', $args);
+    }
+
+    function deleteErrorLog(array $error_id){
+        if(!count($error_id)) {
+            return null;
+        }
+
+        $id = implode(",", $error_id);
+        $args = new stdClass();
+        $args->error_id = $id;
+        $output = executeQuery('elasticsearch.deleteElasticSearchErrorLogById', $args);
+
+        return $output;
+    }
+
+    function deleteErrorLogsAll() {
+        $args = new stdClass();
+        $output = executeQuery('elasticsearch.deleteElasticSearchErrorLogAll', $args);
+
+        return $output;
     }
 
 }

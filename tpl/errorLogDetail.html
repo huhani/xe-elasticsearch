@@ -1,0 +1,94 @@
+<include target="_header.html" />
+
+
+<h2>에러 로그 상세정보</h2>
+<table class="x_table x_table-striped x_table-hover">
+    <colgroup>
+        <col width="120">
+    </colgroup>
+    <tbody>
+    <tr>
+        <th scope="col" class="nowr">error id</th>
+        <td>{$data->error_id}</td>
+    </tr>
+    <tr>
+        <th scope="col" class="nowr">module</th>
+        <td>{$data->module}</td>
+    </tr>
+    <tr>
+        <th scope="col" class="nowr">act</th>
+        <td>{$data->act}</td>
+    </tr>
+    <tr>
+        <th scope="col" class="nowr">type</th>
+        <td>{$data->type}</td>
+    </tr>
+    <tr>
+        <th scope="col" class="nowr">params</th>
+        <td>
+            <code>{str_replace(array("\\/", "\\\\", "\n", "\t"), array("/", "\\", "<BR>", "&nbsp;&nbsp;&nbsp;"), $data->params)}</code>
+        </td>
+    </tr>
+    <tr>
+        <th scope="col" class="nowr">error</th>
+        <td>
+            <code>{str_replace(array("\\/", "\\\\", "\n", "\t"), array("/", "\\", "<BR>", "&nbsp;&nbsp;&nbsp;"), $data->error)}</code>
+        </td>
+    </tr>
+    <tr>
+        <th scope="col" class="nowr">request_uri</th>
+        <td>{$data->request_uri}</td>
+    </tr>
+    <tr>
+        <th scope="col" class="nowr">member_srl</th>
+        <td>{$data->member_srl}</td>
+    </tr>
+    <tr>
+        <th scope="col" class="nowr">nick_name</th>
+        <td>{$data->nick_name}</td>
+    </tr>
+    <tr>
+        <th scope="col" class="nowr">ipaddress</th>
+        <td>{$data->ipaddress}</td>
+    </tr>
+    <tr>
+        <th scope="col" class="nowr">regdate</th>
+        <td>{zdate($data->regdate,"Y.m.d H:i")}</td>
+    </tr>
+    </tbody>
+</table>
+
+
+
+
+<form action="./" method="post">
+    <input type="hidden" name="vid" value="">
+    <input type="hidden" name="mid" value="">
+    <input type="hidden" name="module" value="admin">
+    <input type="hidden" name="act" value="procElasticsearchAdminErrorLogDelete">
+    <input type="hidden" name="error_id" value="{$error_id}">
+    <div class="x_clearfix btnArea">
+        <div class="x_pull-left">
+            <a href="{getUrl('act', 'dispElasticsearchAdminErrorLogList', 'error_id', '')}" type="button" class="x_btn es-error-list">목록</a>
+        </div>
+        <div class="x_pull-right">
+            <button type="submit" class="x_btn deleteErrorLog" value="false">삭제</button>
+        </div>
+    </div>
+
+</form>
+
+<script>
+    (function($){
+        $(document).on('click', 'button.deleteErrorLog', function() {
+            window.exec_json('elasticsearch.procElasticsearchAdminErrorLogDelete', {
+                error_id: $('input[name="error_id"]').val()
+            }, function(resp){
+                alert('모두 삭제되었습니다.');
+                window.location.href = $('a.es-error-list').attr('href');
+            });
+
+            return false;
+        });
+    })(window.jQuery);
+</script>

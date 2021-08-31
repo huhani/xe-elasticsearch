@@ -210,6 +210,101 @@ class elasticsearchAdminView extends elasticsearch
         $this->setTemplateFile('otherSetting');
     }
 
+    function dispElasticsearchAdminErrorLogList() {
+        $search_target = Context::get('search_target');
+        $search_keyword = Context::get('search_keyword');
+        $page = Context::get('page');
+        $oElasticsearchAdminModel = getAdminModel('elasticsearch');
+
+        $args = new stdClass();
+        $args->page = $page;
+        $args->page_count = 30;
+        $output = $oElasticsearchAdminModel->getErrorLogList($args);
+        if(!$output->toBool()) {
+            return $output;
+        }
+        Context::set('errorList', $output->data);
+        Context::set('total_count', $output->total_count);
+        Context::set('page_navigation', $output->page_navigation);
+
+        $this->setTemplateFile('errorLogList');
+    }
+
+    function dispElasticsearchAdminErrorLogDetail() {
+        $error_id = Context::get('error_id');
+        $oElasticsearchAdminModel = getAdminModel('elasticsearch');
+        $output = $oElasticsearchAdminModel->getErrorLog($error_id);
+        if(!$output->toBool()) {
+            return $output;
+        }
+        if($output->data->params) {
+            $output->data->params = $this->prettyPrint($output->data->params);
+        }
+        if($output->data->error) {
+            $output->data->error = $this->prettyPrint($output->data->error);
+        }
+        Context::set('data', $output->data);
+
+        $this->setTemplateFile('errorLogDetail');
+    }
+
+    private function prettyPrint($json)
+    {
+        $result = '';
+        $level = 0;
+        $in_quotes = false;
+        $in_escape = false;
+        $ends_line_level = NULL;
+        $json_length = strlen( $json );
+
+        for( $i = 0; $i < $json_length; $i++ ) {
+            $char = $json[$i];
+            $new_line_level = NULL;
+            $post = "";
+            if( $ends_line_level !== NULL ) {
+                $new_line_level = $ends_line_level;
+                $ends_line_level = NULL;
+            }
+            if ( $in_escape ) {
+                $in_escape = false;
+            } else if( $char === '"' ) {
+                $in_quotes = !$in_quotes;
+            } else if( ! $in_quotes ) {
+                switch( $char ) {
+                    case '}': case ']':
+                    $level--;
+                    $ends_line_level = NULL;
+                    $new_line_level = $level;
+                    break;
+
+                    case '{': case '[':
+                    $level++;
+                    case ',':
+                        $ends_line_level = $level;
+                        break;
+
+                    case ':':
+                        $post = " ";
+                        break;
+
+                    case " ": case "\t": case "\n": case "\r":
+                    $char = "";
+                    $ends_line_level = $new_line_level;
+                    $new_line_level = NULL;
+                    break;
+                }
+            } else if ( $char === '\\' ) {
+                $in_escape = true;
+            }
+            if( $new_line_level !== NULL ) {
+                $result .= "\n".str_repeat( "\t", $new_line_level );
+            }
+            $result .= $char.$post;
+        }
+
+        return $result;
+    }
+
 }
 
 /* End of file : elasticsearch.admin.view.php */

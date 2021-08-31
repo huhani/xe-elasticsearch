@@ -1,0 +1,13 @@
+<table name="elasticsearch_error_logs">
+    <column name="error_id" type="number" size="11" notnull="notnull" auto_increment="auto_increment" primary_key="primary_key" />
+    <column name="module" type="varchar" size="128" />
+    <column name="act" type="varchar" size="128" />
+    <column name="type" type="varchar" size="50" />
+    <column name="params" type="bigtext" />
+    <column name="error" type="text" />
+    <column name="request_uri" type="text" />
+    <column name="member_srl" type="number" size="11" />
+    <column name="nick_name" type="varchar" size="40" />
+    <column name="ipaddress" type="varchar" size="128" notnull="notnull" index="idx_ipaddress" />
+    <column name="regdate" notnull="notnull" type="date" index="idx_regdate" />
+</table>
