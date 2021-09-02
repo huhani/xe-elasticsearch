@@ -20,7 +20,7 @@ class elasticsearchAdminView extends elasticsearch
         $oElasticsearchModel = getModel('elasticsearch');
         $indices = $oElasticsearchModel->getIndexList();
         if($indices === null) {
-            return new BaseObject(-1, "정보를 불러오는 도중 오류가 발생했습니다.");
+            //return new BaseObject(-1, "정보를 불러오는 도중 오류가 발생했습니다.");
         }
 
         Context::set('indices', $indices);
@@ -88,7 +88,7 @@ class elasticsearchAdminView extends elasticsearch
             $prefix .= "_";
         }
         $targetIndex = Context::get('target_index');
-        
+
         if(!$targetIndex || !$oElasticsearchModel->hasIndices([$targetIndex])[0] || substr($targetIndex, 0, 1) == ".") {
             return new BaseObject(-1, "올바르지 않은 인덱스 접근입니다.");
         }
@@ -97,8 +97,9 @@ class elasticsearchAdminView extends elasticsearch
             Context::set('last_document_srl', $oElasticsearchModel->getLastDocumentSrl());
         } else if($targetIndex === $prefix."comments") {
             Context::set('last_comment_srl', $oElasticsearchModel->getLastCommentSrl());
+        } else if($targetIndex === $prefix."files") {
+            Context::set('last_file_srl', $oElasticsearchModel->getLastFileSrl());
         }
-
 
         Context::set('index_prefix', $prefix);
         $this->setTemplateFile('indexSetting');
@@ -123,7 +124,7 @@ class elasticsearchAdminView extends elasticsearch
         if(!$target_index) {
             $target_index = $prefix."documents";
         }
-        if(!in_array($target_index, array($prefix.'documents', $prefix.'comments', $prefix.'document_extra_vars'))) {
+        if(!in_array($target_index, array($prefix.'documents', $prefix.'comments', $prefix.'document_extra_vars', $prefix.'files'))) {
             return new BaseObject(-1, "올바르지 않은 대상입니다.");
         }
         $columnList = array();
@@ -162,6 +163,17 @@ class elasticsearchAdminView extends elasticsearch
                 $columnList = array('document_srl', 'var_idx', 'value', 'eid', 'module_srl');
                 $searchColumnList = array('document_srl', 'module_srl', 'var_idx', 'lang_code', 'value', 'value.my_ngram', 'eid', 'doc_list_order', 'doc_user_id', 'doc_regdate', 'doc_member_srl', 'doc_category_srl');
                 $show_id = true;
+                break;
+
+            case $prefix."files":
+                if(!$sort_index) {
+                    $sort_index = "file_srl";
+                }
+                if(!$order_type) {
+                    $order_type = "desc";
+                }
+                $columnList = array('file_srl', 'nick_name', 'file_extension', 'isvalid', 'source_filename', 'module_srl', 'regdate');
+                $searchColumnList = array('document_srl', 'comment_srl', 'upload_target_type', 'module_srl', 'uploaded_filename', 'source_filename', 'nick_name', 'isvalid');
                 break;
         }
 
@@ -204,9 +216,14 @@ class elasticsearchAdminView extends elasticsearch
 
     function dispElasticsearchAdminOtherSetting() {
         $oElasticsearchModel = getModel('elasticsearch');
+        $oModuleModel = getModel('module');
         $config = $oElasticsearchModel->getModuleConfig();
+        $skin_list = $oModuleModel->getSkins($this->module_path);
 
+        Context::set('config', $config);
+        Context::set('skin_list', $skin_list);
         Context::set('moduleConfig', $config);
+        Context::set('sample_code', htmlspecialchars('<form action="{getUrl()}" method="get"><input type="hidden" name="vid" value="{$vid}" /><input type="hidden" name="mid" value="{$mid}" /><input type="hidden" name="act" value="EIS" /><input type="text" name="is_keyword"  value="{$is_keyword}" /><input class="btn" type="submit" value="{$lang->cmd_search}" /></form>', ENT_COMPAT | ENT_HTML401, 'UTF-8', false) );
         $this->setTemplateFile('otherSetting');
     }
 

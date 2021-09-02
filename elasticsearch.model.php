@@ -149,7 +149,8 @@ class elasticsearchModel extends elasticsearch
                                         "should" => [
                                             ["match_phrase" => ["title.my_ngram" => $search_keyword]],
                                             ["match_phrase" => ["content.my_ngram" => $search_keyword]]
-                                        ]
+                                        ],
+                                        "minimum_should_match" => 1
                                     ]]
                                 ]
                             ]
@@ -371,7 +372,8 @@ class elasticsearchModel extends elasticsearch
                                         "should" => [
                                             ["match_phrase" => ["title.my_ngram" => $search_keyword]],
                                             ["match_phrase" => ["content.my_ngram" => $search_keyword]]
-                                        ]
+                                        ],
+                                        "minimum_should_match" => 1
                                     ]]
                                 ]
                             ]
@@ -593,7 +595,7 @@ class elasticsearchModel extends elasticsearch
             $_searchTarget = "extra_vars";
         }
 
-        $approximatedOffset = (int)$this->getIndexDocumentApproximatedOffset($obj, $total_count);
+        $approximatedOffset = $this->getIndexDocumentApproximatedOffset($obj, $total_count);
         if($approximatedOffset === false) {
             return false;
         }
@@ -609,7 +611,8 @@ class elasticsearchModel extends elasticsearch
                                         "should" => [
                                             ["match_phrase" => ["title.my_ngram" => $search_keyword]],
                                             ["match_phrase" => ["content.my_ngram" => $search_keyword]]
-                                        ]
+                                        ],
+                                        "minimum_should_match" => 1
                                     ]]
                                 ]
                             ]
@@ -1100,7 +1103,7 @@ class elasticsearchModel extends elasticsearch
         $afterSizeOffset = $end - $moveOffset;
         switch ($_searchTarget) {
             case "title_content" :
-                $search_after = $this->getIndexAfterOffset($obj, $total_count);
+                $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
                 $_params = [
                     'index' => $prefix.'documents',
                     'body' => [
@@ -1153,7 +1156,7 @@ class elasticsearchModel extends elasticsearch
                 break;
 
             case "title":
-                $search_after = $this->getIndexAfterOffset($obj, $total_count);
+                $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
                 $_params = [
                     'index' => $prefix.'documents',
                     'body' => [
@@ -1199,7 +1202,7 @@ class elasticsearchModel extends elasticsearch
                 break;
 
             case "content":
-                $search_after = $this->getIndexAfterOffset($obj, $total_count);
+                $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
                 $_params = [
                     'index' => $prefix.'documents',
                     'body' => [
@@ -1322,7 +1325,7 @@ class elasticsearchModel extends elasticsearch
                 break;
 
             case "extra_vars":
-                $search_after = $this->getIndexAfterOffset($obj, $total_count);
+                $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
                 $_params = [
                     'index' => $prefix.'document_extra_vars',
                     'body' => [
@@ -1372,7 +1375,6 @@ class elasticsearchModel extends elasticsearch
             default:
                 return null;
         }
-
 
         $documentSrls = array();
         $data = array();
@@ -1471,7 +1473,8 @@ class elasticsearchModel extends elasticsearch
                                         "should" => [
                                             ["match_phrase" => ["title.my_ngram" => $search_keyword]],
                                             ["match_phrase" => ["content.my_ngram" => $search_keyword]]
-                                        ]
+                                        ],
+                                        "minimum_should_match" => 1
                                     ]]
                                 ]
                             ]
@@ -1751,10 +1754,22 @@ class elasticsearchModel extends elasticsearch
         return $output->toBool() && $output->data ? $output->data->comment_srl : 0;
     }
 
+    function getLastFileSrl() {
+        $args = new stdClass();
+        $args->sort_index = "file_srl";
+        $args->order_type = "desc";
+        $output = executeQuery('elasticsearch.getLastFileSrl', $args);
+
+        return $output->toBool() && $output->data ? $output->data->file_srl : 0;
+    }
+
     function getModuleDefaultConfig() {
         $config = new stdClass();
         $config->use_alternate_search = "Y";
         $config->use_search_after = "N";
+        $config->skin = "default";
+        $config->search_module_target = "include";
+        $config->search_target_module_srl = "";
 
         return $config;
     }
@@ -1767,6 +1782,608 @@ class elasticsearchModel extends elasticsearch
         }
 
         return $config;
+    }
+
+    function getIntegrationSearchCount($params) {
+        $oElasticsearchController = getController('elasticsearch');
+        $client = self::getElasticEngineClient();
+        $newParams = [
+            'index'=> $params['index'],
+            'body' => [
+                'query' => $params['body']['query']
+            ]
+        ];
+
+        try {
+            $result = $client->count($newParams);
+
+            return $result['count'];
+        } catch(Exception $e) {
+            $oElasticsearchController->insertErrorLog('count', $params, $e);
+        }
+    }
+
+    function getIntegrationSearchApproximatedOffset($obj, $params, $total_count = -1) {
+        $oElasticsearchController = getController('elasticsearch');
+        $client = self::getElasticEngineClient();
+        $compression = 50;
+        if($total_count === -1) {
+            $total_count = $this->getIntegrationSearchCount($obj, $params);
+        }
+        $page = $obj->page;
+        if(!$page || $page < 1) {
+            $page = 1;
+        }
+        $list_count = $obj->list_count;
+        $fromPage = max(0, $page-1);
+        $from = $fromPage * $list_count;
+        $percent = $total_count > 0 ? $from / $total_count * 100 : 0;
+
+        $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
+        $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
+        if($order_type === "desc") {
+            $percent = 100 - $percent;
+        }
+
+        $params1 = [
+            'index' => $params['index'],
+            'body' => [
+                "size" => 0,
+                'query' => $params['body']['query'],
+                "_source" => false,
+                "aggs" => [
+                    'percentile' => [
+                        'percentiles' => [
+                            "field" => $sort_index,
+                            "percents" => $percent,
+                            "tdigest" => ["compression" => $compression]
+                        ]
+                    ]
+                ]
+
+            ]
+        ];
+
+        try {
+            $result = $client->search($params1);
+        } catch(Exception $e) {
+            $oElasticsearchController->insertErrorLog('search', $params1, $e);
+            return false;
+        }
+        $aggregations = $result['aggregations'];
+        $percentile = $aggregations['percentile'];
+        $approximatedOffset = end($percentile['values']);
+        return $approximatedOffset;
+
+    }
+
+    function getIntegrationSearchAfterOffset($obj, $params, $total_count = -1) {
+        $oElasticsearchController = getController('elasticsearch');
+        $chunkSize = 10000;
+        if($total_count === -1) {
+            $total_count = $this->getIntegrationSearchCount($params);
+        }
+        $client = self::getElasticEngineClient();
+        $page = $obj->page;
+        $list_count = $obj->list_count;
+        $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
+        $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
+        $fromPage = max(0, $page-1);
+        $from = $fromPage * $list_count;
+        $approximatedOffset = $this->getIntegrationSearchApproximatedOffset($obj, $params, $total_count);
+
+        if($approximatedOffset === false) {
+            return false;
+        }
+        //$approximatedOffset = "20210703020609";
+        //$approximatedOffset = "20210703002630";
+
+        $params2 = [
+            'index' => $params['index'],
+            'body' => [
+                'query' => $params['body']['query']
+            ]
+        ];
+        $params2['body']['query']['bool']['filter']['bool']['must'][] = ["range" => [$sort_index => [
+            ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
+        ]]];
+
+        try {
+            $result = $client->count($params2);
+        } catch(Exception $e) {
+            $oElasticsearchController->insertErrorLog('count', $params2, $e);
+            return false;
+        }
+
+        $count = $result['count'];
+        $diff = (int)($from-$count);
+        if($diff === 0) {
+            return $approximatedOffset;
+        }
+
+        $params3 = [
+            'index' => $params['index'],
+            'body' => [
+                'size' => abs($diff) + ($diff < 0 ? 1 : 0),
+                'query' => $params['body']['query'],
+                "fields" => [$sort_index],
+                "_source" => false
+            ]
+        ];
+
+        if($diff > 0) {
+            if($order_type === "desc") {
+                $params3['body']['query']['bool']['filter']['bool']['must'][] = ["range" => [$sort_index => [
+                    "lte" => $approximatedOffset
+                ]]];
+                $params3['body']['sort'] = [
+                    $sort_index => "desc"
+                ];
+            } else {
+                $params3['body']['query']['bool']['filter']['bool']['must'][] = ["range" => [$sort_index => [
+                    "gte" => $approximatedOffset
+                ]]];
+                $params3['body']['sort'] = [
+                    $sort_index => "asc"
+                ];
+            }
+        } else {
+            if($order_type === "desc") {
+                $params3['body']['query']['bool']['filter']['bool']['must'][] = ["range" => [$sort_index => [
+                    "gte" => $approximatedOffset
+                ]]];
+                $params3['body']['sort'] = [
+                    $sort_index => "asc"
+                ];
+            } else {
+                $params3['body']['query']['bool']['filter']['bool']['must'][] = ["range" => [$sort_index => [
+                    "lte" => $approximatedOffset
+                ]]];
+                $params3['body']['sort'] = [
+                    $sort_index => "desc"
+                ];
+            }
+        }
+
+        try {
+            $result = $client->search($params3);
+        } catch(Exception $e) {
+            $oElasticsearchController->insertErrorLog('search', $params3, $e);
+            return false;
+        }
+
+        $hits = $result['hits'];
+        $hitsData = $hits['hits'];
+        $last = end($hitsData);
+
+        return end($last['fields'][$sort_index]);
+    }
+
+    function getIntegrationSearchDataFromSearchAfter($obj, $params) {
+        $client = self::getElasticEngineClient();
+        $oElasticsearchController = getController('elasticsearch');
+        $total_count = $this->getIntegrationSearchCount($params);
+        $page = $obj->page;
+        $list_count = $obj->list_count;
+        $page_count = $obj->page_count;
+        $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
+        $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
+        $search_after = null;
+        if(!$page) {
+            $page = 1;
+        }
+
+        $search_after = $page > 1 ? $this->getIntegrationSearchAfterOffset($obj, $params, $total_count) : null;
+        $_params = [
+            'index' => $params['index'],
+            'body' => [
+                "size" => $list_count,
+                'query' => $params['body']['query'],
+                'sort' => $params['body']['sort'],
+                "_source" => false,
+            ]
+        ];
+        if(isset($params['body']['fields']) && count($params['body']['fields'])) {
+            $_params['body']['fields'] = $params['body']['fields'];
+        }
+        if($search_after) {
+            $_params['body']['query']['bool']['filter']['bool']['must'][] = ["range" =>
+                [$sort_index =>
+                    [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                ]
+            ];
+        }
+        try {
+            $response = $client->search($_params);
+            $hits = $response['hits'];
+            $hitsData = $hits['hits'];
+            $total_page = max(1, ceil($total_count / $list_count));
+            $ids = array();
+            $data = array();
+            foreach($hitsData as $each) {
+                $id = (int)$each['_id'];
+                $ids[] = $id;
+                $data[$id] = $each['fields'];
+            }
+
+            $page_navigation = new PageHandler($total_count, $total_page, $page, $page_count);
+            $output = new BaseObject();
+            $output->total_count = $total_count;
+            $output->total_page = $total_page;
+            $output->page = $page;
+            $output->ids = $ids;
+            $output->data = $data;
+            $output->page_navigation = $page_navigation;
+
+            return $output;
+        } catch(Exception $e) {
+            $oElasticsearchController->insertErrorLog('search', $_params, $e);
+            $_result = null;
+        }
+
+    }
+
+    function getIntegrationSearchData($obj, array $columnList = array()) {
+        $config = $this->getModuleConfig();
+        $prefix = self::getElasticEnginePrefix();
+        if($prefix) {
+            $prefix .= "_";
+        }
+        $type = $obj->type;
+        $module_target = $obj->module_target;
+        $module_srls = $obj->module_srls;
+        $page = $obj->page;
+        $list_count = $obj->list_count;
+        $page_count = $obj->page_count;
+        $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
+        $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
+        $search_target = $obj->search_target;
+        $search_keyword = $obj->search_keyword;
+        $params = null;
+        switch($type) {
+            case "documents":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        "from" => max($page-1, 0) * $list_count,
+                        "size" => $list_count,
+                        'query' => [
+                            "bool" => [
+                                "must" => [],
+                                "filter" => [
+                                    "bool" => [
+                                        "must" => [
+                                            ["match" => ["status" => "PUBLIC"]]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ],
+                        'sort' => [
+                            $sort_index => $order_type
+                        ],
+                        "_source" => false
+                    ]
+                ];
+                if(count($columnList)) {
+                    $params['body']['fields'] = $columnList;
+                }
+                if($module_target === "include") {
+                    $params['body']['query']['bool']['filter']['bool']['must'][] = [
+                        "terms" => [
+                            "module_srl" => $module_srls
+                        ],
+                    ];
+                } else {
+                    $params['body']['query']['bool']['filter']['bool']['must_not'] = [
+                        "terms" => [
+                            "module_srl" => $module_srls
+                        ]
+                    ];
+
+                }
+                if($search_target === "title_content") {
+                    $params['body']['query']['bool']['must'][] = ["bool" => [
+                        "should" => [
+                            ["match_phrase" => ["title.my_ngram" => $search_keyword]],
+                            ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                        ]
+                    ]];
+                } else if($search_target === "content") {
+                    $params['body']['query']['bool']['must'][] = ["match_phrase" => ["content.my_ngram" => $search_keyword]];
+                } else if($search_target === "tag") {
+                    $params['body']['query']['bool']['must'][] = ["match_phrase" => ["tags.my_ngram" => $search_keyword]];
+                } else {
+                    $params['body']['query']['bool']['must'][] = ["match_phrase" => ["title.my_ngram" => $search_keyword]];
+                }
+
+                break;
+
+            case "comments":
+                $params = [
+                    'index' => $prefix.'comments',
+                    'body' => [
+                        "from" => max($page-1, 0) * $list_count,
+                        "size" => $list_count,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                ],
+                                "filter" => [
+                                    "bool" => [
+                                        "must" => [
+                                            ["match" => ["is_secret" => "N"]]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ],
+                        'sort' => [
+                            $sort_index => $order_type
+                        ],
+                        "_source" => false
+                    ]
+                ];
+                if(count($columnList)) {
+                    $params['body']['fields'] = $columnList;
+                }
+                if($module_target === "include") {
+                    $params['body']['query']['bool']['filter']['bool']['must'][] = [
+                        "terms" => [
+                            "module_srl" => $module_srls
+                        ],
+                    ];
+                } else {
+                    $params['body']['query']['bool']['filter']['bool']['must_not'] = [
+                        "terms" => [
+                            "module_srl" => $module_srls
+                        ]
+                    ];
+                }
+                break;
+
+            case "files":
+                $direct_download = isset($obj->direct_download) ? $obj->direct_download : "N";
+                $params = [
+                    'index' => $prefix.'files',
+                    'body' => [
+                        "from" => max($page-1, 0) * $list_count,
+                        "size" => $list_count,
+                        'query' => [
+                            "bool" => [
+                                "should" => [
+                                    ["match" => ["source_filename" => $search_keyword]],
+                                    ["match" => ["source_filename.my_ngram" => $search_keyword]]
+                                ],
+                                "filter" => [
+                                    "bool" => [
+                                        "must" => [
+                                            ["match" => ["isvalid" => "Y"]],
+                                            ["match" => ["direct_download" => $direct_download]],
+                                            ["match" => ["doc_status" => "PUBLIC"]],
+                                            ["match" => ["cmt_is_secret" => "N"]]
+                                        ]
+                                    ]
+                                ],
+                                "minimum_should_match" => 1
+                            ]
+                        ],
+                        'sort' => [
+                            $sort_index => $order_type
+                        ],
+                        "_source" => false
+                    ]
+                ];
+                if(count($columnList)) {
+                    $params['body']['fields'] = $columnList;
+                }
+                if($module_target === "include") {
+                    $params['body']['query']['bool']['filter']['bool']['must'][] = [
+                        "terms" => [
+                            "module_srl" => $module_srls
+                        ],
+                    ];
+                } else {
+                    $params['body']['query']['bool']['filter']['bool']['must_not'] = [
+                        "terms" => [
+                            "module_srl" => $module_srls
+                        ]
+                    ];
+                }
+                break;
+        }
+        if($params && $config->use_search_after === "Y") {
+            return $this->getIntegrationSearchDataFromSearchAfter($obj, $params);
+        }
+
+        if($params) {
+            $client = self::getElasticEngineClient();
+            try {
+                $response = $client->search($params);
+                $hits = $response['hits'];
+                $hitsData = $hits['hits'];
+                $total_count = $hits['total']['value'];
+                $total_page = max(1, ceil($total_count / $list_count));
+                $ids = array();
+                $data = array();
+                foreach($hitsData as $each) {
+                    $id = (int)$each['_id'];
+                    $ids[] = $id;
+                    $data[$id] = $each['fields'];
+                }
+                
+                $page_navigation = new PageHandler($total_count, $total_page, $page, $page_count);
+                $output = new BaseObject();
+                $output->total_count = $total_count;
+                $output->total_page = $total_page;
+                $output->page = $page;
+                $output->ids = $ids;
+                $output->data = $data;
+                $output->page_navigation = $page_navigation;
+
+                return $output;
+            } catch(Exception $e) {
+                var_dump($e);
+                exit();
+                //$oElasticsearchController->insertErrorLog('search', $params, $e);
+                //return null;
+            }
+
+        }
+
+        return null;
+    }
+
+    function getIntegrationSearchDocuments($module_target = 'include', array $module_srl_list, $search_target, $is_keyword, $page, $list_count = 10) {
+        $oDocumentModel = getModel('document');
+        $obj = new stdClass();
+        $obj->type = "documents";
+        $obj->module_target = $module_target;
+        $obj->module_srls = $module_srl_list;
+        $obj->search_target = $search_target;
+        $obj->search_keyword = $is_keyword;
+        $obj->page = $page;
+        $obj->page_count = 10;
+        $obj->list_count = $list_count;
+        $output = $this->getIntegrationSearchData($obj);
+        $documents = null;
+        if(count($output->data) > 0) {
+            $documents = $oDocumentModel->getDocuments($output->ids);
+            if(count($documents) > 0) {
+                $output->data = $documents;
+            }
+        }
+
+        return $output;
+    }
+
+    function getIntegrationSearchComments($module_target = 'include', array $module_srl_list, $is_keyword, $page, $list_count = 10) {
+        $oCommentModel = getModel('comment');
+        $obj = new stdClass();
+        $obj->type = "comments";
+        $obj->module_target = $module_target;
+        $obj->module_srls = $module_srl_list;
+        $obj->search_target = null;
+        $obj->search_keyword = $is_keyword;
+        $obj->page = $page;
+        $obj->page_count = 10;
+        $obj->list_count = $list_count;
+        $output = $this->getIntegrationSearchData($obj);
+        $comments = null;
+        if(count($output->data) > 0) {
+            $comments = $oCommentModel->getComments($output->ids);
+            if(count($comments) > 0) {
+                $output->data = $comments;
+            }
+        }
+
+        return $output;
+    }
+
+    function getIntegrationSearchTrackbacks() {
+        // 아무 데이터도 주지 않음.
+    }
+
+    function getIntegrationSearchFiles($module_target = 'include', array $module_srl_list, $is_keyword, $page, $list_count = 20, $direct_download = "N") {
+        $oFileModel = getModel('file');
+        $oDocumentModel = getModel('document');
+        $oCommentModel = getModel('comment');
+        $obj = new stdClass();
+        $obj->type = "files";
+        $obj->module_target = $module_target;
+        $obj->module_srls = $module_srl_list;
+        $obj->search_target = null;
+        $obj->search_keyword = $is_keyword;
+        $obj->page = $page;
+        $obj->direct_download = $direct_download === "Y" ? "Y" : "N";
+        $obj->page_count = 10;
+        $obj->list_count = $list_count;
+
+
+        $output = $this->getIntegrationSearchData($obj, array('document_srl', 'comment_srl'));
+        $ids = $output->ids;
+        $outputData = $output->data;
+        $document_srls = array();
+        $comment_srls = array();
+        $list = array();
+        if(count($ids) > 0) {
+            $args = new stdClass();
+            $args->file_srl = implode(",", $ids);
+            $args->sort_index = "file_srl";
+            $args->order_type = "desc";
+            $output2 = executeQueryArray('elasticsearch.getFilesByFileSrl', $args);
+            if($output2->toBool()) {
+                foreach($output2->data as $key => $val) {
+                    $_obj = new stdClass;
+                    $_obj->filename = $val->source_filename;
+                    $_obj->download_count = $val->download_count;
+                    $val->download_url = $_obj->direct_download === "N" ? $oFileModel->getDownloadUrl($val->file_srl, $val->sid, $val->module_srl) : str_replace('./', '', $val->uploaded_filename);
+                    if(substr($val->download_url,0,2)=='./') {
+                        $val->download_url = substr($val->download_url,2);
+                    }
+                    $_obj->download_url = Context::getRequestUri().$val->download_url;
+                    $_obj->target_srl = $val->upload_target_srl;
+                    $_obj->file_size = $val->file_size;
+                    if(preg_match('/\.(jpg|jpeg|gif|png)$/i', $val->source_filename))
+                    {
+                        $_obj->type = 'image';
+                        $thumbnail_path = sprintf('files/thumbnails/%s',getNumberingPath($val->file_srl, 3));
+                        if(!is_dir($thumbnail_path)) FileHandler::makeDir($thumbnail_path);
+                        $thumbnail_file = sprintf('%s%dx%d.%s.jpg', $thumbnail_path, 120, 120, 'crop');
+                        $thumbnail_url  = Context::getRequestUri().$thumbnail_file;
+                        if(!file_exists($thumbnail_file)) FileHandler::createImageFile($val->uploaded_filename, $thumbnail_file, 120, 120, 'jpg', 'crop');
+                        $_obj->src = sprintf('<img src="%s" alt="%s" width="%d" height="%d" />', $thumbnail_url, htmlspecialchars($obj->filename, ENT_COMPAT | ENT_HTML401, 'UTF-8', false), 120, 120);
+                    }
+                    else
+                    {
+                        $_obj->type = 'binary';
+                        $_obj->src = '';
+                    }
+
+                    $list[] = $_obj;
+                }
+            }
+        }
+
+        foreach($outputData as $key=>$val) {
+            if(isset($val['comment_srl'])) {
+                $comment_srls[] = $val['comment_srl'][0];
+            } else if(isset($val['document_srl'])) {
+                $document_srls[] = $val['document_srl'][0];
+            }
+        }
+
+
+
+        $comment_list = count($comment_srls) > 0 ? $oCommentModel->getComments($comment_srls) : array();
+        $document_list = count($document_srls) > 0 ? $oDocumentModel->getDocuments($document_srls): array();
+        foreach($list as $key=>&$val) {
+            $found = false;
+            foreach($comment_list as $_key=>$_val) {
+                if($val->target_srl == $_val->comment_srl) {
+                    $val->url = $_val->getPermanentUrl();
+                    $val->regdate = $_val->getRegdate("Y-m-d H:i");
+                    $val->nick_name = $_val->getNickName();
+                    $found = true;
+                    break;
+                }
+            }
+            if($found){
+                continue;
+            }
+            foreach($document_list as $_key=>$_val) {
+                if($val->target_srl == $_val->document_srl) {
+                    $val->url = $_val->getPermanentUrl();
+                    $val->regdate = $_val->getRegdate("Y-m-d H:i");
+                    $val->nick_name = $_val->getNickName();
+                    break;
+                }
+            }
+        }
+        $output->data = $list;
+
+        return $output;
     }
 
 }

@@ -4,6 +4,7 @@
 		
 	</grants>
 	<actions>
+		        <action name="EIS" type="view" meta-noindex="true" />
 		        <action name="dispElasticsearchAdminModuleConfig" type="view" />
 		        <action name="dispElasticsearchAdminOtherSetting" type="view" />
 		        <action name="dispElasticsearchAdminIndexList" type="view" admin_index="true" />
@@ -21,6 +22,7 @@
 		        <action name="procElasticsearchAdminIndexDocumentManage" type="controller" />
 		        <action name="procElasticsearchAdminIndexCommentManage" type="controller" />
 		        <action name="procElasticsearchAdminIndexDocumentExtraVarsManage" type="controller" />
+		        <action name="procElasticsearchAdminIndexFileManage" type="controller" />
 		        <action name="procElasticsearchAdminModuleSetting" type="controller" />
 		        <action name="procElasticsearchAdminIndexRemapping" type="controller" />
 		        <action name="procElasticsearchAdminErrorLogDelete" type="controller" />

@@ -1,4 +1,4 @@
-<query id="getImportFile" action="select">
+<query id="getFileListWithNickName" action="select">
     <tables>
         <table name="files" />
         <table name="documents" type="left join">
@@ -42,18 +42,13 @@
         <column name="_doc.status" alias="_doc_status" />
         <column name="comments.document_srl" alias="cmt_document_srl" />
         <column name="comments.nick_name" alias="cmt_nick_name" />
-        <column name="comments.user_id" alias="cmt_user_id" />
         <column name="comments.comment_srl" alias="comment_srl" />
+        <column name="comments.user_id" alias="cmt_user_id" />
         <column name="comments.is_secret" alias="cmt_is_secret" />
         <column name="member.nick_name" alias="nick_name" />
         <column name="member.user_id" alias="user_id" />
     </columns>
     <conditions>
-        <condition operation="excess" column="files.file_srl" var="file_srl" filter="number" />
-        <condition operation="less" column="files.file_srl" var="end_file_srl" filter="number" pipe="and" />
+        <condition operation="in" column="files.upload_target_srl" var="upload_target_srls" notnull="notnull" />
     </conditions>
-    <navigation>
-        <index var="sort_index" default="list_order" order="order_type" />
-        <list_count var="list_count" default="20" />
-    </navigation>
 </query>

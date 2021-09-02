@@ -5,7 +5,11 @@
 </div>
 
 
-<form id="fo_list" action="./" method="get">
+<!--@if(!$indices)-->
+<p>ElasticSearch 서버에 연결할 수 없습니다.</p>
+<!--@end-->
+
+<form cond="$indices" id="fo_list" action="./" method="get">
     <input type="hidden" name="module" value="{$module}" />
     <input type="hidden" name="page" value="{$page}" />
     <table id="memberVotgeListTable" class="x_table x_table-striped x_table-hover">
@@ -17,8 +21,6 @@
         <thead>
 
         <tr>
-
-
             <th scope="col" class="nowr" cond="$indices && count($indices) > 0" loop="$indices[0] => $key,$val">{$key}</th>
             <th scope="col" class="nowr">detail</th>
 
@@ -27,9 +29,7 @@
         </tr>
 
         </thead>
-
         <tbody>
-
             <tr cond="$indices" loop="$indices => $list">
                 <td class="nowr" loop="$list => $key, $val">{is_numeric($val) ? number_format($val) : $val}</td>
                 <td class="nowr">

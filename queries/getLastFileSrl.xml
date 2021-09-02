@@ -1,0 +1,12 @@
+<query id="getLastFileSrl" action="select">
+    <tables>
+        <table name="files" />
+    </tables>
+    <columns>
+        <column name="file_srl" />
+    </columns>
+    <navigation>
+        <index var="sort_index" default="file_srl" order="order_type" />
+        <list_count var="list_count" default="1" />
+    </navigation>
+</query>

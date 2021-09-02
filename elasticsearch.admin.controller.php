@@ -175,12 +175,57 @@ class elasticsearchAdminController extends elasticsearch
         return;
     }
 
+    function procElasticsearchAdminIndexFileManage() {
+        $targetIndex = Context::get("target_index");
+        $startFileSrl = Context::get("start_file_srl");
+        $endFileSrl = Context::get("end_file_srl");
+        $job = Context::get('job');
+        if($startFileSrl >= $endFileSrl) {
+            return new BaseObject(-1, "end_comment_srl 값이 start_comment_srl보다 커야합니다.");
+        }
+
+        switch($job) {
+            case "insert":
+                $oElasticsearchAdminModel = getAdminModel('elasticsearch');
+                $chunkCount = Context::get("chunk_count");
+                if($chunkCount <= 0 || $chunkCount >= 20000) {
+                    $chunkCount = 1000;
+                }
+                $importer = $oElasticsearchAdminModel->getElasticSearchFileImporter();
+                $output = $importer->import($startFileSrl, $endFileSrl, $chunkCount, false);
+                $this->add('insertCount', $output->insertCount);
+                $this->add('updateCount', $output->updateCount);
+                $this->add('failCount', $output->failCount);
+                $this->add('lastFileSrl', $output->lastFileSrl);
+
+                break;
+
+            case "delete":
+                $oElasticsearchController = getController('elasticsearch');
+                $output = $oElasticsearchController->deleteIndexFileByRange($targetIndex, $startFileSrl, $endFileSrl);
+
+                $this->add('deletedCount', $output['deleted']);
+                break;
+        }
+
+        return;
+    }
+
     function procElasticsearchAdminModuleSetting() {
+        $oElasticsearchModel = getModel('elasticsearch');
+        $conf = $oElasticsearchModel->getModuleConfig();
         $oModuleController = getController('module');
         $vars = Context::getRequestVars();
         $config = new stdClass();
         $config->use_alternate_search = $vars->use_alternate_search === "Y" ? "Y" : "N";
         $config->use_search_after = $vars->use_search_after === "Y" ? "Y" : "N";
+
+        $config->search_target_module_srl = Context::get('search_target_module_srl');
+        if(!$config->search_target_module_srl) $config->search_target_module_srl = '';
+        $config->skin = Context::get('skin');
+        $config->search_module_target = Context::get('search_module_target');
+        $config->skin_vars = $conf->skin_vars;
+
         $output = $oModuleController->updateModuleConfig('elasticsearch', $config);
         if (!$output->toBool())
         {

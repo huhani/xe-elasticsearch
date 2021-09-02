@@ -50,8 +50,6 @@ class ElasticSearchInstall {
             "document_srl" => ["type" => "long"],
             "module_srl" => ["type" => "long"],
             "category_srl" => ["type" => "long"],
-            //"lang_code" => ["type" => "keyword", "index" => false],
-            //"is_notice" => ["type" => "keyword", "index" => false],
             "title" => ["type" => "text",
                 "analyzer" => "standard",
                 "fields" => [
@@ -61,8 +59,6 @@ class ElasticSearchInstall {
                         "search_analyzer" => "my_ngram"
                     ]
                 ]],
-            //"title_bold" => ["type" => "keyword", "index" => false],
-            //"title_color" => ["type" => "keyword", "index" => false],
             "content" => ["type" => "text",
                 "analyzer" => "standard",
                 "fields" => [
@@ -72,19 +68,11 @@ class ElasticSearchInstall {
                         "search_analyzer" => "my_ngram"
                     ]
                 ]],
-            //"readed_count" => ["type" => "unsigned_long"],
-            //"voted_count" => ["type" => "long"],
-            //"blamed_count" => ["type" => "long"],
-            //"comment_count" => ["type" => "unsigned_long"],
-            //"trackback_count" => ["type" => "unsigned_long"],
-            //"uploaded_count" => ["type" => "unsigned_long"],
-            //"password" => ["type" => "keyword", "index" => false],
             "user_id" => ["type" => "keyword"],
             "user_name" => ["type" => "keyword"],
             "nick_name" => ["type" => "keyword"],
             "member_srl" => ["type" => "long"],
             "email_address" => ["type" => "keyword"],
-            //"homepage" => ["type" => "keyword"],
             "tags" => ["type" => "text",
                 "analyzer" => "standard",
                 "fields" => [
@@ -94,15 +82,9 @@ class ElasticSearchInstall {
                         "search_analyzer" => "my_ngram"
                     ]
                 ]],
-            //"extra_vars" => ["type" => "keyword", "index" => false],
             "regdate" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
-            //"last_update" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
-            //"last_updater" => ["type" => "keyword"],
             "ipaddress" => ["type" => "ip"],
             "list_order" => ["type" => "long"],
-            //"update_order" => ["type" => "long"],
-            //"allow_trackback" => ["type" => "keyword"],
-            //"notify_message" => ["type" => "keyword"],
             "status" => ["type" => "keyword"],
             "comment_status" => ["type" => "keyword"],
         ],
@@ -142,58 +124,59 @@ class ElasticSearchInstall {
                         "search_analyzer" => "my_ngram"
                     ]
                 ]],
-            //"voted_count" => ["type" => "long"],
-            //"blamed_count" => ["type" => "long"],
-            //"notify_message" => ["type" => "keyword"],
-            //"password" => ["type" => "keyword", "index" => false],
+
             "user_id" => ["type" => "keyword"],
             "user_name" => ["type" => "keyword"],
             "nick_name" => ["type" => "keyword"],
             "member_srl" => ["type" => "long"],
             "email_address" => ["type" => "keyword"],
             "homepage" => ["type" => "keyword"],
-            //"uploaded_count" => ["type" => "long"],
             "regdate" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
             "last_update" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
             "ipaddress" => ["type" => "ip"],
             "list_order" => ["type" => "long"],
             "status" => ["type" => "long"],
-
             "doc_list_order" => ["type" => "long"],
             "doc_user_id" => ["type" => "keyword"],
             "doc_regdate" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
             "doc_member_srl" => ["type" => "long"],
-            "doc_category_srl" => ["type" => "long"]
+            "doc_category_srl" => ["type" => "long"],
+            "doc_status" => ["type" => "keyword"]
         ],
-        /*       "files" => [
-                   "file_srl" => ["type" => "unsigned_long"],
-                   "upload_target_srl" => ["type" => "unsigned_long"],
-                   "upload_target_type" => ["type" => "keyword"],
-                   "module_srl" => ["type" => "unsigned_long"],
-                   "member_srl" => ["type" => "unsigned_long"],
-                   //"download_count" => ["type" => "unsigned_long"],
-                   "direct_download" => ["type" => "keyword"],
-                   "source_filename" => ["type" => "text", "fields" => [
-                       "nori_discard" => [
-                           "type" => "text",
-                           "analyzer" => "nori_discard",
-                           "search_analyzer" => "standard"
-                       ]
-                   ]],
-                   "uploaded_filename" => ["type" => "text", "fields" => [
-                       "nori_discard" => [
-                           "type" => "text",
-                           "analyzer" => "nori_discard",
-                           "search_analyzer" => "standard"
-                       ]
-                   ]],
-                   "file_size" => ["type" => "unsigned_long"],
-                   //"comment" => ["type" => "text"],
-                   "isvalid" => ["type" => "keyword"],
-                   //"cover_image" => ["type" => "keyword"],
-                   "regdate" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
-                   "ipaddress" => ["type" => "ip"]
-               ]*/
+
+        "files" => [
+            "file_srl" => ["type" => "long"],
+            "upload_target_srl" => ["type" => "long"],
+            "upload_target_type" => ["type" => "keyword"],
+            "document_srl" => ["type" => "long"],
+            "comment_srl" => ["type" => "long"],
+            "module_srl" => ["type" => "long"],
+            "member_srl" => ["type" => "long"],
+            "nick_name" => ["type" => "keyword"],
+            "user_id" => ["type" => "keyword"],
+            "direct_download" => ["type" => "keyword"],
+            "file_extension" => ["type" => "keyword"],
+            "source_filename" => ["type" => "text", "fields" => [
+                "my_ngram" => [
+                    "type" => "text",
+                    "analyzer" => "my_ngram",
+                    "search_analyzer" => "standard"
+                ]
+            ]],
+            "uploaded_filename" => ["type" => "text", "fields" => [
+                "my_ngram" => [
+                    "type" => "text",
+                    "analyzer" => "my_ngram",
+                    "search_analyzer" => "standard"
+                ]
+            ]],
+            "file_size" => ["type" => "long"],
+            "isvalid" => ["type" => "keyword"],
+            "regdate" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
+            "ipaddress" => ["type" => "ip"],
+            "doc_status" => ["type" => "keyword"],
+            "cmt_is_secret" => ["type" => "keyword"]
+        ]
     ];
 
     protected $debug = false;
@@ -537,13 +520,14 @@ class ElasticSearchFileImporter extends ElasticSearchBaseImporter {
         while(true) {
             $args = new stdClass();
             $args->file_srl = $last_file_srl;
-            $args->sort_index = "file_srl";
+            $args->sort_index = "files.file_srl";
             $args->order_type = "asc";
             $args->list_count = max(1, $chunkCount);
             if($endFileOffset < 0) {
                 $args->end_file_srl = "$endFileOffset";
             }
             $output = executeQueryArray('elasticsearch.getImportFile', $args);
+            //var_dump($output);
             if(!$output->toBool() || $output->data == null || count($output->data) === 0) {
                 break;
             }
@@ -554,10 +538,42 @@ class ElasticSearchFileImporter extends ElasticSearchBaseImporter {
                         '_id' => $each->file_srl,
                         '_type' => '_doc']
                 );
-
+                $each_document_srl = $each->document_srl ? $each->document_srl :
+                    ($each->cmt_document_srl ? $each->cmt_document_srl : null);
+                $each_comment_srl = $each->comment_srl ? $each->comment_srl : null;
+                $each_nick_name = $each->doc_nick_name ? $each->doc_nick_name :
+                    ($each->cmt_nick_name ? $each->cmt_nick_name :
+                        ($each->nick_name ? $each->nick_name : null));
+                $each_user_id = $each->user_id ? $each->user_id :
+                    ($each->doc_user_id ? $each->doc_user_id :
+                        ($each->cmt_user_id ? $each->cmt_user_id : null));
+                $doc_status = $each->doc_status ? $each->doc_status :
+                    ($each->_doc_status ? $each->_doc_status : null);
+                $extension = pathinfo($each->source_filename, PATHINFO_EXTENSION);
+                if($extension && strlen($extension) > 0) {
+                    $extension = strtolower($extension);
+                } else {
+                    $extension = null;
+                }
                 $file = array();
                 foreach(get_object_vars($each) as $key=>$val) {
                     $file[$key] = $val;
+                }
+                unset($file['cmt_document_srl']);
+                unset($file['cmt_nick_name']);
+                unset($file['cmt_user_id']);
+                unset($file['doc_nick_name']);
+                unset($file['doc_user_id']);
+                unset($file['doc_nick_name']);
+                unset($file['_doc_status']);
+                $file['document_srl'] = $each_document_srl;
+                $file['comment_srl'] = $each_comment_srl;
+                $file['nick_name'] = $each_nick_name;
+                $file['user_id'] = $each_user_id;
+                $file['file_extension'] = $extension;
+                $file['doc_status'] = $doc_status;
+                if(!$file['cmt_is_secret']) {
+                    $file['cmt_is_secret'] = "N";
                 }
                 $paramsArray['body'][] = $fileIndex;
                 $paramsArray['body'][] = $file;
@@ -981,7 +997,6 @@ class elasticsearchAdminModel extends elasticsearch
 
     }
 
-
     function getIndexDocumentListFromSearchAfter($obj) {
         $oElasticsearchModel = getModel('elasticsearch');
         $oElasticsearchController = getController('elasticsearch');
@@ -998,7 +1013,9 @@ class elasticsearchAdminModel extends elasticsearch
         $search_keyword = !isset($obj->search_keyword) || !$obj->search_keyword ? null : $obj->search_keyword;
         $columnList = !isset($obj->columnList) || !count($obj->columnList) ? ["*"] : $obj->columnList;
         $search_after = null;
-        $search_after = $this->getIndexAfterOffset($obj, $total_count);
+        if($page > 1) {
+            $search_after = $this->getIndexAfterOffset($obj, $total_count);
+        }
         $params = [
             'index' => $target_index,
             'body' => [

@@ -82,12 +82,18 @@ class elasticsearchController extends elasticsearch
         $document_srl = (int)$obj->document_srl;
         $this->deleteDocument($document_srl);
         $this->deleteCommentByDocumentSrl($document_srl);
+        $this->setFileValidByDocumentSrl($document_srl, "N", $document_srl);
 
         return new BaseObject();
     }
 
     function triggerAfterRestoreTrashDocument(&$obj) {
         $this->insertCommentByDocumentSrl($obj->document_srl);
+        $this->setFileValidByDocumentSrl($obj->document_srl, "Y");
+    }
+
+    function triggerBeforeMoveDocumentModule(&$obj) {
+        $this->setFlag("moveDocumentModule", $obj);
     }
 
     function triggerAfterMoveDocumentModule(&$obj) {
@@ -102,6 +108,8 @@ class elasticsearchController extends elasticsearch
         $this->moveDocumentModule($document_srls, $module_srl, $category_srl);
         $this->moveCommentModule($document_srls, $module_srl, $category_srl);
         $this->moveExtraVarsModule($document_srls, $module_srl, $category_srl);
+        $this->unsetFlag("moveDocumentModule");
+        $this->setFlag("moveDocumentModuleAfter", $obj);
     }
 
     function triggerDeleteModuleData(&$obj) {
@@ -113,6 +121,43 @@ class elasticsearchController extends elasticsearch
         $this->deleteModuleDocuments($module_srl);
         $this->deleteModuleExtraVars($module_srl);
         $this->deleteModuleComments($module_srl);
+        $this->deleteModuleFiles($module_srl);
+    }
+
+    function triggerAfterInsertFile(&$obj) {
+        // 댓글도 함께 처리
+        $moveFlag = $this->getFlag('moveDocumentModule');
+        $copyFlag = $this->getFlag('copyDocumentModule');
+        if(!$moveFlag && !$copyFlag) {
+            $this->insertFile($obj);
+        }
+    }
+
+    function triggerAfterInsertDelete(&$obj) {
+        $this->deleteFile($obj->file_srl);
+    }
+
+    function triggerBeforeCopyDocument(&$obj) {
+        $this->setFlag("copyDocumentModule", $obj);
+    }
+
+    function triggerAfterCopyDocument(&$obj) {
+        $this->unsetFlag("copyDocumentModule");
+        $this->setFlag("copyDocumentModuleAfter", $obj);
+    }
+
+    function triggerAfterModuleProc() {
+        $target_srls = array();
+        $copyFlag = $this->getFlag("copyDocumentModuleAfter");
+        $moveFlag = $this->getFlag("moveDocumentModuleAfter");
+        if($copyFlag) {
+            $target_srls = $copyFlag->copied_srls;
+        } else if($moveFlag) {
+            $target_srls = explode(",", $moveFlag->document_srls);
+        }
+        if(count($target_srls) > 0) {
+            $this->insertFileByDocumentSrls($target_srls);
+        }
     }
 
     function moveDocumentModule($document_srls, $module_srl, $category_srl) {
@@ -255,11 +300,15 @@ class elasticsearchController extends elasticsearch
             'body' => $docData
         ];
 
+        $response = null;
         try {
-            $responses = $client->index($params);
-            $this->insertExtraVars($obj->document_srl, $docData['list_order'], $docData['user_id'], $docData['regdate'], $docData['member_srl']);
+            $response = $client->index($params);
         } catch(Exception $e) {
             $this->insertErrorLog('index', $params, $e);
+        }
+        if($response) {
+            $this->insertExtraVars($obj->document_srl, $docData['list_order'], $docData['user_id'], $docData['regdate'], $docData['member_srl']);
+            $this->setFileValid($obj->document_srl, "Y", $obj->document_srl);
         }
     }
 
@@ -284,16 +333,18 @@ class elasticsearchController extends elasticsearch
         if(!$oDocument->isExists()) {
             return;
         }
+
+        $doc_status = $oDocument->get('status');
+        $is_secret = isset($obj->is_secret) ? $obj->is_secret : "N";
         if($prefix) {
             $prefix .= "_";
         }
-
         $cmtData = array();
         $cmtData['comment_srl'] = $obj->comment_srl;
         $cmtData['module_srl'] = $obj->module_srl;
         $cmtData['document_srl'] = $obj->document_srl;
         $cmtData['parent_srl'] = isset($obj->parent_srl) ? $obj->parent_srl : 0;
-        $cmtData['is_secret'] = isset($obj->is_secret) ? $obj->is_secret : "N";
+        $cmtData['is_secret'] = $is_secret;
         $cmtData['list_order'] = isset($obj->list_order) ? $obj->list_order : 0;
         $cmtData['content'] = $obj->content;
         $cmtData['user_id'] = isset($obj->user_id) ? $obj->user_id : "";
@@ -316,11 +367,14 @@ class elasticsearchController extends elasticsearch
             'type' => '_doc',
             'body' => $cmtData
         ];
-
+        $response = null;
         try {
-            $responses = $client->index($params);
+            $response = $client->index($params);
         } catch(Exception $e) {
             $this->insertErrorLog('index', $params, $e);
+        }
+        if($response) {
+            $this->setFileValid($obj->comment_srl, "Y", $obj->document_srl, $obj->comment_srl, $is_secret, $doc_status);
         }
     }
 
@@ -450,7 +504,6 @@ class elasticsearchController extends elasticsearch
         if(!$document_srl) {
             return;
         }
-
         $oElasticsearchModel = getModel('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
         $prefix = $oElasticsearchModel::getElasticEnginePrefix();
@@ -473,6 +526,242 @@ class elasticsearchController extends elasticsearch
             $responses = $client->deleteByQuery($query);
         } catch(Exception $e) {
             $this->insertErrorLog('deleteByQuery', $query, $e);
+        }
+    }
+
+    function insertFile($obj, $isvalid = "N", $document_srl = null, $comment_srl = null) {
+        if(!$obj || !$obj->file_srl) {
+            return;
+        }
+
+        $oMemberModel = getModel('member');
+        $oElasticsearchModel = getModel('elasticsearch');
+        $client = $oElasticsearchModel::getElasticEngineClient();
+        $prefix = $oElasticsearchModel::getElasticEnginePrefix();
+        if($prefix) {
+            $prefix .= "_";
+        }
+
+        $file_srl = $obj->file_srl;
+        $upload_target_srl = $obj->upload_target_srl;
+        $module_srl = $obj->module_srl;
+        $direct_download = $obj->direct_download;
+        $source_filename = $obj->source_filename;
+        $uploaded_filename = $obj->uploaded_filename;
+        $file_size = $obj->file_size;
+        $member_srl = $obj->member_srl;
+        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+            $ipaddress = $_SERVER['HTTP_CLIENT_IP'];
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $ipaddress = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        } else {
+            $ipaddress = $_SERVER['REMOTE_ADDR'];
+        }
+        $nick_name = null;
+        $user_id = null;
+        $extension = pathinfo($obj->source_filename, PATHINFO_EXTENSION);
+        if($extension && strlen($extension) > 0) {
+            $extension = strtolower($extension);
+        } else {
+            $extension = null;
+        }
+        if($member_srl > 0) {
+            $oMemberInfo = $oMemberModel->getMemberInfoByMemberSrl($member_srl);
+            if($oMemberInfo) {
+                $nick_name = $oMemberInfo->nick_name;
+                $user_id = $oMemberInfo->user_id;
+            }
+        }
+
+        $fileData = array();
+        $fileData['file_srl'] = $file_srl;
+        $fileData['upload_target_srl'] = $upload_target_srl;
+        $fileData['module_srl'] = $module_srl;
+        $fileData['direct_download'] = $direct_download;
+        $fileData['source_filename'] = $source_filename;
+        $fileData['uploaded_filename'] = $uploaded_filename;
+        $fileData['file_size'] = $file_size;
+        $fileData['isvalid'] = $isvalid;
+        $fileData['ipaddress'] = $ipaddress;
+        $fileData['file_extension'] = $extension;
+        $fileData['document_srl'] = $document_srl;
+        $fileData['comment_srl'] = $comment_srl;
+        $fileData['nick_name'] = $nick_name;
+        $fileData['user_id'] = $user_id;
+        $fileData['regdate'] = date("YmdHis");
+        $fileData['cmt_is_secret'] = "N";
+
+        $params = [
+            'index' => $prefix.'files',
+            'id' => $obj->file_srl,
+            'type' => '_doc',
+            'body' => $fileData
+        ];
+
+        try {
+            $responses = $client->index($params);
+        } catch(Exception $e) {
+            $this->insertErrorLog('index', $params, $e);
+        }
+    }
+
+    function insertFileByDocumentSrls(array $document_srls) {
+        $oElasticsearchModel = getModel('elasticsearch');
+        $client = $oElasticsearchModel::getElasticEngineClient();
+        $prefix = $oElasticsearchModel::getElasticEnginePrefix();
+        if($prefix) {
+            $prefix .= "_";
+        }
+        $paramsArray = array("body" => array());
+        foreach($document_srls as $document_srl) {
+            $upload_target_list = array($document_srl);
+            $commentArgs = new stdClass();
+            $commentArgs->document_srl = $document_srl;
+            $commentOutput = executeQueryArray('elasticsearch.getCommentList', $commentArgs);
+            $commentList = $commentOutput->data;
+            if(count($commentList) > 0) {
+                foreach($commentList as $each) {
+                    $upload_target_list[] = $each->comment_srl;
+                }
+            }
+            if(count($upload_target_list)) {
+                $target_srl_implode = implode(",", $upload_target_list);
+                $args = new stdClass();
+                $args->upload_target_srls = $target_srl_implode;
+                $output = executeQueryArray('elasticsearch.getFileListWithNickName', $args);
+                if($output->toBool() && count($output->data)) {
+                    foreach($output->data as $each) {
+                        $fileIndex = array(
+                            'index' => ['_index' => $prefix.'files',
+                                '_id' => $each->file_srl,
+                                '_type' => '_doc']
+                        );
+                        $each_document_srl = $each->document_srl ? $each->document_srl :
+                            ($each->cmt_document_srl ? $each->cmt_document_srl : null);
+                        $each_comment_srl = $each->comment_srl ? $each->comment_srl : null;
+                        $each_nick_name = $each->doc_nick_name ? $each->doc_nick_name :
+                            ($each->cmt_nick_name ? $each->cmt_nick_name :
+                                ($each->nick_name ? $each->nick_name : null));
+                        $each_user_id = $each->user_id ? $each->user_id :
+                            ($each->doc_user_id ? $each->doc_user_id :
+                                ($each->cmt_user_id ? $each->cmt_user_id : null));
+                        $doc_status = $each->doc_status ? $each->doc_status :
+                            ($each->_doc_status ? $each->_doc_status : null);
+                        $extension = pathinfo($each->source_filename, PATHINFO_EXTENSION);
+                        if($extension && strlen($extension) > 0) {
+                            $extension = strtolower($extension);
+                        } else {
+                            $extension = null;
+                        }
+                        $file = array();
+                        foreach(get_object_vars($each) as $key=>$val) {
+                            $file[$key] = $val;
+                        }
+                        unset($file['cmt_document_srl']);
+                        unset($file['cmt_nick_name']);
+                        unset($file['cmt_user_id']);
+                        unset($file['doc_nick_name']);
+                        unset($file['doc_user_id']);
+                        unset($file['doc_nick_name']);
+                        unset($file['_doc_status']);
+                        $file['document_srl'] = $each_document_srl;
+                        $file['comment_srl'] = $each_comment_srl;
+                        $file['nick_name'] = $each_nick_name;
+                        $file['user_id'] = $each_user_id;
+                        $file['doc_status'] = $doc_status;
+                        $file['file_extension'] = $extension;
+                        if(!$file['cmt_is_secret']) {
+                            $file['cmt_is_secret'] = "N";
+                        }
+                        $paramsArray['body'][] = $fileIndex;
+                        $paramsArray['body'][] = $file;
+                    }
+                }
+            }
+        }
+        try {
+            $response = $client->bulk($paramsArray);
+        } catch(Exception $e) {
+            $this->insertErrorLog('bulk', $paramsArray, $e);
+        }
+    }
+
+    function deleteFile($file_srl) {
+        $oElasticsearchModel = getModel('elasticsearch');
+        $prefix = $oElasticsearchModel::getElasticEnginePrefix();
+        if($prefix) {
+            $prefix .= "_";
+        }
+
+        $index = $prefix.'files';
+        $this->deleteIndexDocument($index, $file_srl);
+    }
+
+    function setFileValid($upload_target_srl, $isvalid = "Y", $document_srl = null, $comment_srl = null, $is_secret = "N", $doc_status = "PUBLIC") {
+        $oElasticsearchModel = getModel('elasticsearch');
+        $client = $oElasticsearchModel::getElasticEngineClient();
+        $prefix = $oElasticsearchModel::getElasticEnginePrefix();
+        if($prefix) {
+            $prefix .= "_";
+        }
+
+        $params = [
+            "index" => $prefix."files",
+            "type" => "_doc",
+            "body" => [
+                'query' => [
+                    'match' => ['upload_target_srl' => $upload_target_srl]
+                ],
+                'script' => [
+                    "source" => "ctx._source.isvalid = params.isvalid; ctx._source.document_srl = params.document_srl; ctx._source.comment_srl = params.comment_srl; ctx._source.cmt_is_secret = params.is_secret; ctx._source.doc_status = params.doc_status;",
+                    "lang" => "painless",
+                    "params" => [
+                        "isvalid" => $isvalid,
+                        "document_srl" => $document_srl,
+                        "comment_srl" => $comment_srl,
+                        "is_secret" => $is_secret,
+                        "doc_status" => $doc_status
+                    ]
+                ]
+            ]
+        ];
+
+        try {
+            $response = $client->updateByQuery($params);
+        } catch(Exception $e) {
+            $this->insertErrorLog('updateByQuery', $params, $e);
+        }
+    }
+
+    function setFileValidByDocumentSrl($document_srl, $isvalid = "Y") {
+        $oElasticsearchModel = getModel('elasticsearch');
+        $client = $oElasticsearchModel::getElasticEngineClient();
+        $prefix = $oElasticsearchModel::getElasticEnginePrefix();
+        if($prefix) {
+            $prefix .= "_";
+        }
+
+        $params = [
+            "index" => $prefix."files",
+            "type" => "_doc",
+            "body" => [
+                'query' => [
+                    'match' => ['document_srl' => $document_srl]
+                ],
+                'script' => [
+                    "source" => "ctx._source.isvalid = params.isvalid",
+                    "lang" => "painless",
+                    "params" => [
+                        "isvalid" => $isvalid
+                    ]
+                ]
+            ]
+        ];
+
+        try {
+            $response = $client->updateByQuery($params);
+        } catch(Exception $e) {
+            $this->insertErrorLog('updateByQuery', $params, $e);
         }
     }
 
@@ -544,6 +833,34 @@ class elasticsearchController extends elasticsearch
         }
         $query = [
             'index' => $prefix.'comments',
+            'type' => '_doc',
+            'body'=> [
+                'query' => [
+                    'match' => [
+                        'module_srl' => $module_srl
+                    ]
+                ]
+            ]
+        ];
+        try {
+            $responses = $client->deleteByQuery($query);
+        } catch(Exception $e) {
+            $this->insertErrorLog('deleteByQuery', $query, $e);
+        }
+    }
+
+    function deleteModuleFiles($module_srl) {
+        if(!$module_srl) {
+            return;
+        }
+        $oElasticsearchModel = getModel('elasticsearch');
+        $client = $oElasticsearchModel::getElasticEngineClient();
+        $prefix = $oElasticsearchModel::getElasticEnginePrefix();
+        if($prefix) {
+            $prefix .= "_";
+        }
+        $query = [
+            'index' => $prefix.'files',
             'type' => '_doc',
             'body'=> [
                 'query' => [
@@ -709,6 +1026,33 @@ class elasticsearchController extends elasticsearch
         }
     }
 
+    function deleteIndexFileByRange($indexName, $start_file_srl, $end_file_srl) {
+        $oElasticsearchModel = getModel('elasticsearch');
+        $client = $oElasticsearchModel::getElasticEngineClient();
+        $query = [
+            'index' => $indexName,
+            'type' => '_doc',
+            'body' => [
+                'query' => [
+                    'range' => [
+                        "file_srl" => [
+                            "gte" => $start_file_srl,
+                            "lte" => $end_file_srl
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        try {
+            $responses = $client->deleteByQuery($query);
+
+            return $responses;
+        } catch(Exception $e) {
+            $this->insertErrorLog('deleteByQuery', $query, $e);
+        }
+    }
+
     function remappingIndices() {
         $oElasticsearchAdminModel = getAdminModel('elasticsearch');
         $installer = $oElasticsearchAdminModel->getElasticSearchInstall();
@@ -780,6 +1124,27 @@ class elasticsearchController extends elasticsearch
         $output = executeQuery('elasticsearch.deleteElasticSearchErrorLogAll', $args);
 
         return $output;
+    }
+
+    private function setFlag($name, $data = null) {
+        if(!isset($GLOBALS['__elasticSearch__'])) {
+            $GLOBALS['__elasticSearch__'] = array();
+        }
+        $GLOBALS['__elasticSearch__'][$name] = $data;
+    }
+
+    private function getFlag($name) {
+        if(isset($GLOBALS['__elasticSearch__']) && isset($GLOBALS['__elasticSearch__'][$name])) {
+            return $GLOBALS['__elasticSearch__'][$name];
+        }
+
+        return null;
+    }
+
+    private function unsetFlag($name) {
+        if(isset($GLOBALS['__elasticSearch__']) && isset($GLOBALS['__elasticSearch__'][$name])) {
+            unset($GLOBALS['__elasticSearch__'][$name]);
+        }
     }
 
 }

@@ -1,4 +1,5 @@
 <include target="./_header.html" />
+<load target="../../module/tpl/js/module_list.js" />
 
 <div class="x_form-horizontal">
 
@@ -29,6 +30,42 @@
                     </label>
                 </div>
             </div>
+
+            <div class="x_control-group">
+                <label for="sample_code" class="x_control-label">통합검색 샘플코드</label>
+                <div class="x_controls" style="margin-right:14px">
+                    <textarea id="sample_code" readonly style="width:100%;height:100px;cursor:text;font-family:'Courier New', Courier, monospace">{$sample_code}</textarea>
+                    <p class="x_help-block">위 코드를 레이아웃, 스킨 등에 추가하면 통합검색이 가능합니다</p>
+                </div>
+            </div>
+            <div class="x_control-group">
+                <label for="skin" class="x_control-label">통합검색 스킨</label>
+                <div class="x_controls">
+                    <select name="skin" id="skin">
+                        <option loop="$skin_list => $key, $val"  value="{$key}" selected="selected"|cond="$config->skin == $key">{$val->title}</option>
+                    </select>
+                    <p class="x_help-inline">콘텐츠 스킨을 선택할 수 있습니다.</p>
+                </div>
+            </div>
+            <div class="x_control-group">
+                <label class="x_control-label">통합검색 대상</label>
+                <div class="x_controls">
+                    <select name="search_module_target">
+                        <option value="include">선택된 대상만 검색</option>
+                        <option value="exclude" selected="selected"|cond="$config->search_module_target=='exclude'">선택된 대상을 검색에서 제외</option>
+                    </select>
+
+                    <input type="hidden" name="search_target_module_srl" id="search_target_module_srl" value="{$config->search_target_module_srl}" />
+                    <select class="modulelist_selected" size="8" multiple="multiple" style="display:block;vertical-align:top;margin:5px 0"></select>
+                    <a href="#" id="__module_srl_list_target_module_srl" class="x_btn moduleTrigger" data-multiple="true" style="margin:0 -5px 0 0;border-radius:2px 0 0 0px">{$lang->cmd_add}</a>
+                    <button type="button" class="x_btn modulelist_del" style="border-radius:0 2px 2px 0">{$lang->cmd_delete}</button>
+                    <p class="x_help-block"><strong>{$lang->about_target_module}</strong></p>
+                    <script>
+                        xe.registerApp(new xe.ModuleListManager('search_target_module_srl'));
+                    </script>
+                </div>
+            </div>
+
         </section>
 
         <div class="x_clearfix btnArea">
@@ -38,9 +75,8 @@
         </div>
     </form>
 
-
     <section class="section">
-        <h1>인덱스 재생성</h1>
+        <h1>인덱스 설정</h1>
         <div class="x_control-group">
             <label class="x_control-label">인덱스 재생성</label>
             <div class="x_controls" style="padding-top:3px">

@@ -30,6 +30,7 @@
         <column name="documents.user_id" alias="doc_user_id" />
         <column name="documents.member_srl" alias="doc_member_srl" />
         <column name="documents.category_srl" alias="doc_category_srl" />
+        <column name="documents.status" alias="doc_status" />
     </columns>
     <conditions>
         <condition operation="excess" column="comments.comment_srl" var="comment_srl" filter="number" />

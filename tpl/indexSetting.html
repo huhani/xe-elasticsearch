@@ -589,6 +589,190 @@
         });
     </script>
 
+    <!--@else if($target_index === $index_prefix."files")-->
+
+
+    <section class="section index index-files">
+        <h1>Index</h1>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_start_file_srl">start file_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_start_file_srl" id="index_start_file_srl" value="0" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_end_file_srl">end file_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_end_file_srl" id="index_end_file_srl" value="{$last_file_srl}" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_chunk_size">chunk size</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_chunk_size" id="index_chunk_size" value="1000" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="index_request_interval">request interval (ms)</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="index_request_interval" id="index_request_interval" value="250" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">index</label>
+            <div class="x_controls" style="padding-top:3px">
+                <a href="javascript:;" class="x_btn startFileIndex" data-index="{$target_index}">start</a>
+                <a href="javascript:;" class="x_btn stopFileIndex" data-index="{$target_index}" style="display: none">stop</a>
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">status</label>
+            <div class="x_controls" style="padding-top:3px">
+                <table border="0">
+                    <tr class="insert-count">
+                        <td style="width: 140px;">insertCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="update-count">
+                        <td style="width: 140px;">updateCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="fail-count">
+                        <td style="width: 140px;">failCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                    <tr class="last-comment-srl">
+                        <td style="width: 140px;">lastFileSrl</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="section delete index-files">
+        <h1>delete</h1>
+        <div class="x_control-group">
+            <label class="x_control-label" for="delete_start_file_srl">start file_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="delete_start_file_srl" id="delete_start_file_srl" value="0" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label" for="delete_end_file_srl">end file_srl</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" name="delete_end_file_srl" id="delete_end_file_srl" value="{$last_file_srl}" style="width: 150px;">
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">delete</label>
+            <div class="x_controls" style="padding-top:3px">
+                <a href="javascript:;" class="x_btn startFileDelete" data-index="{$target_index}">delete</a>
+            </div>
+        </div>
+        <div class="x_control-group">
+            <label class="x_control-label">status</label>
+            <div class="x_controls" style="padding-top:3px">
+                <table border="0">
+                    <tr class="delete-count">
+                        <td style="width: 140px;">deleteCount</td>
+                        <td class="val" style="width:45px; text-align: center;">-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        jQuery(document).ready(function($){
+            var request = false;
+            var stopFlag = false;
+            var requestTimerID = null;
+
+            $(document).on('click', '.startFileDelete', function() {
+                if(request) {
+                    return;
+                }
+                exec_json('elasticsearch.procElasticsearchAdminIndexFileManage', {
+                    target_index: $('.startFileIndex').attr('data-index'),
+                    job: 'delete',
+                    start_file_srl: $('#delete_start_file_srl').val(),
+                    end_file_srl: $('#delete_end_file_srl').val()
+                }, function(ret_obj){
+                    request = false;
+                    alert(ret_obj.deletedCount + "개의 데이터를 삭제하였습니다.");
+                    $('.delete-count .val').html(ret_obj.deletedCount);
+                });
+            });
+
+            $(document).on('click', '.startFileIndex', function() {
+                if(request) {
+                    return;
+                }
+
+                $('.insert-count .val').html("-");
+                $('.update-count .val').html("-");
+                $('.fail-count .val').html("-");
+                $('.last-comment-srl .val').html("-");
+                $('.startFileIndex').hide();
+                $('.stopFileIndex').show();
+                var lastFileSrl = parseInt($('#index_start_file_srl').val(), 10) || 0;
+                var endFileSrl = parseInt($('#index_end_file_srl').val(), 10) || 0;
+                var insertCount = 0;
+                var updateCount = 0;
+                var failCount = 0;
+                var requestInterval = parseInt($("#index_request_interval").val(), 10);
+                var chunk_count = parseInt($('#index_chunk_size').val(), 10) || 1000;
+                var targetIndex = $('.startFileIndex').attr('data-index');
+                if(isNaN(requestInterval) || requestInterval < 0) {
+                    requestInterval = 250;
+                }
+
+                var fn = function() {
+                    if(stopFlag) {
+                        stopFlag = false;
+                        request = false;
+                        return;
+                    }
+                    requestTimerID = null;
+                    request = true;
+                    exec_json('elasticsearch.procElasticsearchAdminIndexFileManage', {
+                        target_index: targetIndex,
+                        job: 'insert',
+                        start_file_srl: lastFileSrl,
+                        end_file_srl: endFileSrl,
+                        chunk_count: chunk_count
+                    }, function(ret_obj){
+                        lastFileSrl = ret_obj.lastFileSrl;
+                        insertCount += ret_obj.insertCount;
+                        updateCount += ret_obj.updateCount;
+                        failCount += ret_obj.failCount;
+                        $('.insert-count .val').html(insertCount);
+                        $('.update-count .val').html(updateCount);
+                        $('.fail-count .val').html(failCount);
+                        $('.last-comment-srl .val').html(lastFileSrl);
+                        if(ret_obj.insertCount + ret_obj.updateCount + ret_obj.failCount < chunk_count) {
+                            request = false;
+                            $('.startFileIndex').show();
+                            $('.stopFileIndex').hide();
+                            alert("done.");
+                        } else {
+                            requestTimerID = setTimeout(fn, requestInterval);
+                        }
+                    });
+                }
+
+                fn();
+            });
+
+            $(document).on('click', '.stopFileIndex', function() {
+                stopFlag = true;
+                $('.startFileIndex').show();
+                $('.stopFileIndex').hide();
+            });
+
+        });
+    </script>
 
     <!--@end-->
 
