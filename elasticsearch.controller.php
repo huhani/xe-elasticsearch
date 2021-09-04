@@ -15,7 +15,7 @@ class elasticsearchController extends elasticsearch
     }
 
     function triggerBeforeGetDocumentList(&$obj) {
-        if($obj->search_target) {
+        if(isset($obj->search_target) && isset($obj->search_keyword) && $obj->search_target && $obj->search_keyword) {
             $oElasticSearchModel = getModel('elasticsearch');
             $config = $oElasticSearchModel->getModuleConfig();
             if($config->use_alternate_search === "Y") {

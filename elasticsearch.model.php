@@ -121,7 +121,8 @@ class elasticsearchModel extends elasticsearch
         if($prefix) {
             $prefix .= "_";
         }
-        $module_srl = $obj->module_srl;
+        $module_srl = isset($obj->module_srl) && $obj->module_srl ? explode(',', $obj->module_srl) : null;
+        $exclude_module_srl = isset($obj->exclude_module_srl) && $obj->exclude_module_srl ? explode(',', $obj->exclude_module_srl) : null;
         $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
         $search_target = $obj->search_target;
         $search_keyword = $obj->search_keyword;
@@ -157,17 +158,33 @@ class elasticsearchModel extends elasticsearch
                         ]
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
+
                 try {
                     $result = $client->count($params);
                     return $result['count'];
@@ -190,16 +207,31 @@ class elasticsearchModel extends elasticsearch
                         ],
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 try {
                     $result = $client->count($params);
@@ -223,16 +255,31 @@ class elasticsearchModel extends elasticsearch
                         ]
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 try {
                     $result = $client->count($params);
@@ -265,7 +312,7 @@ class elasticsearchModel extends elasticsearch
                     $filter[] = ["match" => ["doc_category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                 }
                 if(count($filter) > 0) {
                     $params['body']['query']['bool']['filter'] = $filter;
@@ -292,7 +339,7 @@ class elasticsearchModel extends elasticsearch
                                     ["match" => ["value" => $search_keyword]]
                                 ],
                                 "filter" => [
-                                    ["term" => ["module_srl" => $module_srl]],
+                                    ["terms" => ["module_srl" => $module_srl]],
                                     ["term" => ["var_idx" => $varIdx]]
                                 ],
                                 "minimum_should_match" => 1
@@ -331,7 +378,8 @@ class elasticsearchModel extends elasticsearch
         if($prefix) {
             $prefix .= "_";
         }
-        $module_srl = $obj->module_srl;
+        $module_srl = isset($obj->module_srl) && $obj->module_srl ? explode(',', $obj->module_srl) : null;
+        $exclude_module_srl = isset($obj->exclude_module_srl) && $obj->exclude_module_srl ? explode(',', $obj->exclude_module_srl) : null;
         $page = $obj->page;
         if(!$page || $page < 1) {
             $page = 1;
@@ -391,16 +439,31 @@ class elasticsearchModel extends elasticsearch
 
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 try {
                     $result = $client->search($params);
@@ -440,16 +503,31 @@ class elasticsearchModel extends elasticsearch
 
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 try {
                     $result = $client->search($params);
@@ -488,16 +566,31 @@ class elasticsearchModel extends elasticsearch
 
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 try {
                     $result = $client->search($params);
@@ -523,7 +616,7 @@ class elasticsearchModel extends elasticsearch
                                     ["match" => ["value" => $search_keyword]]
                                 ],
                                 "filter" => [
-                                    ["term" => ["module_srl" => $module_srl]],
+                                    ["terms" => ["module_srl" => $module_srl]],
                                     ["term" => ["var_idx" => $varIdx]]
                                 ],
                                 "minimum_should_match" => 1
@@ -572,7 +665,8 @@ class elasticsearchModel extends elasticsearch
         if($prefix) {
             $prefix .= "_";
         }
-        $module_srl = $obj->module_srl;
+        $module_srl = isset($obj->module_srl) && $obj->module_srl ? explode(',', $obj->module_srl) : null;
+        $exclude_module_srl = isset($obj->exclude_module_srl) && $obj->exclude_module_srl ? explode(',', $obj->exclude_module_srl) : null;
         $page = $obj->page;
         $list_count = $obj->list_count;
         $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
@@ -619,6 +713,17 @@ class elasticsearchModel extends elasticsearch
                         ]
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 $filter[] = ["range" => [$sort_index => [
                     ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
@@ -627,11 +732,15 @@ class elasticsearchModel extends elasticsearch
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
 
                 try {
@@ -667,6 +776,17 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params2['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($diff > 0) {
                     if($order_type === "desc") {
@@ -701,17 +821,21 @@ class elasticsearchModel extends elasticsearch
                         ];
                     }
                 }
-
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params2['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params2['body']['query']['bool']['filter']) && isset($params2['body']['query']['bool']['filter']['bool'])) {
+                        $params2['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params2['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
+
                 try {
                     $result = $client->search($params2);
                 } catch(Exception $e) {
@@ -737,6 +861,17 @@ class elasticsearchModel extends elasticsearch
                         ]
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 $filter[] = ["range" => [$sort_index => [
                     ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
@@ -749,7 +884,11 @@ class elasticsearchModel extends elasticsearch
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 try {
                     $result = $client->count($params);
@@ -778,6 +917,17 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params2['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($diff > 0) {
                     if($order_type === "desc") {
@@ -817,11 +967,15 @@ class elasticsearchModel extends elasticsearch
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params2['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params2['body']['query']['bool']['filter']) && isset($params2['body']['query']['bool']['filter']['bool'])) {
+                        $params2['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params2['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 try {
                     $result = $client->search($params2);
@@ -848,6 +1002,17 @@ class elasticsearchModel extends elasticsearch
                         ]
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 $filter[] = ["range" => [$sort_index => [
                     ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
@@ -856,11 +1021,15 @@ class elasticsearchModel extends elasticsearch
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 $result = $client->count($params);
                 $count = $result['count'];
@@ -884,6 +1053,17 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params2['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($diff > 0) {
                     if($order_type === "desc") {
@@ -923,11 +1103,15 @@ class elasticsearchModel extends elasticsearch
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params2['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params2['body']['query']['bool']['filter']) && isset($params2['body']['query']['bool']['filter']['bool'])) {
+                        $params2['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params2['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 try {
                     $result = $client->search($params2);
@@ -952,7 +1136,7 @@ class elasticsearchModel extends elasticsearch
                                     ["match" => ["value" => $search_keyword]]
                                 ],
                                 "filter" => [
-                                    ["term" => ["module_srl" => $module_srl]],
+                                    ["terms" => ["module_srl" => $module_srl]],
                                     ["term" => ["var_idx" => $varIdx]]
                                 ],
                                 "minimum_should_match" => 1
@@ -991,7 +1175,7 @@ class elasticsearchModel extends elasticsearch
                                     ["match" => ["value" => $search_keyword]]
                                 ],
                                 "filter" => [
-                                    ["term" => ["module_srl" => $module_srl]],
+                                    ["terms" => ["module_srl" => $module_srl]],
                                     ["term" => ["var_idx" => $varIdx]]
                                 ],
                                 "minimum_should_match" => 1
@@ -1064,7 +1248,8 @@ class elasticsearchModel extends elasticsearch
         $prefix = self::getElasticEnginePrefix();
         $client = self::getElasticEngineClient();
         $isExtraVars = $obj->isExtraVars;
-        $module_srl = $obj->module_srl;
+        $module_srl = isset($obj->module_srl) && $obj->module_srl ? explode(',', $obj->module_srl) : null;
+        $exclude_module_srl = isset($obj->exclude_module_srl) && $obj->exclude_module_srl ? explode(',', $obj->exclude_module_srl) : null;
         $page = $obj->page;
         $list_count = $obj->list_count;
         $page_count = $obj->page_count;
@@ -1127,12 +1312,23 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false,
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $_params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if($search_after) {
@@ -1143,7 +1339,11 @@ class elasticsearchModel extends elasticsearch
                     ];
                 }
                 if(count($filter) > 0) {
-                    $_params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($_params['body']['query']['bool']['filter']) && isset($_params['body']['query']['bool']['filter']['bool'])) {
+                        $_params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $_params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
 
                 try {
@@ -1175,12 +1375,23 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false,
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $_params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if($search_after) {
@@ -1191,7 +1402,11 @@ class elasticsearchModel extends elasticsearch
                     ];
                 }
                 if(count($filter) > 0) {
-                    $_params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($_params['body']['query']['bool']['filter']) && isset($_params['body']['query']['bool']['filter']['bool'])) {
+                        $_params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $_params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 try {
                     $_result = $client->search($_params);
@@ -1221,12 +1436,23 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false,
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $_params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if($search_after) {
@@ -1237,7 +1463,11 @@ class elasticsearchModel extends elasticsearch
                     ];
                 }
                 if(count($filter) > 0) {
-                    $_params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($_params['body']['query']['bool']['filter']) && isset($_params['body']['query']['bool']['filter']['bool'])) {
+                        $_params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $_params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 try {
                     $_result = $client->search($_params);
@@ -1284,7 +1514,8 @@ class elasticsearchModel extends elasticsearch
                         $filter[] = ["match" => ["doc_category_srl" => $category_srl]];
                     }
                     if($module_srl) {
-                        $filter[] = ["match" => ["module_srl" => $module_srl]];
+                        $filter[] = ["terms" => ["module_srl" => $module_srl]];
+                        $filter[] = ["match" => ["doc_status" => "PUBLIC"]];
                     }
                     if(count($filter) > 0) {
                         $params['body']['query']['bool']['filter'] = $filter;
@@ -1426,7 +1657,9 @@ class elasticsearchModel extends elasticsearch
         }
         $prefix = self::getElasticEnginePrefix();
         $isExtraVars = $obj->isExtraVars;
-        $module_srl = $obj->module_srl;
+        $module_srl = isset($obj->module_srl) && $obj->module_srl ? explode(',', $obj->module_srl) : null;
+        $exclude_module_srl = isset($obj->exclude_module_srl) && $obj->exclude_module_srl ? explode(',', $obj->exclude_module_srl) : null;
+
         $page = $obj->page;
         $list_count = $obj->list_count;
         $page_count = $obj->page_count;
@@ -1486,16 +1719,31 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false,
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 break;
 
@@ -1519,16 +1767,31 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false,
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 break;
 
@@ -1552,16 +1815,31 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false,
                     ]
                 ];
+                if($exclude_module_srl && count($exclude_module_srl) > 0) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
                 $filter = [];
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
                     $filter[] = ["match" => ["status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filter;
+                    }
                 }
                 break;
 
@@ -1609,7 +1887,8 @@ class elasticsearchModel extends elasticsearch
                     $filter[] = ["match" => ["doc_category_srl" => $category_srl]];
                 }
                 if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
+                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
+                    $filter[] = ["match" => ["doc_status" => "PUBLIC"]];
                 }
                 if(count($filter) > 0) {
                     $params['body']['query']['bool']['filter'] = $filter;
@@ -1629,8 +1908,10 @@ class elasticsearchModel extends elasticsearch
                                     ["match" => ["value" => $search_keyword]]
                                 ],
                                 "filter" => [
-                                    ["term" => ["module_srl" => $module_srl]],
-                                    ["term" => ["var_idx" => $varIdx]]
+                                    'bool' => [
+                                        ["terms" => ["module_srl" => [$module_srl]]],
+                                        ["term" => ["var_idx" => $varIdx]]
+                                    ]
                                 ],
                                 "minimum_should_match" => 1
                             ]
@@ -2299,8 +2580,7 @@ class elasticsearchModel extends elasticsearch
         $obj->direct_download = $direct_download === "Y" ? "Y" : "N";
         $obj->page_count = 10;
         $obj->list_count = $list_count;
-
-
+        
         $output = $this->getIntegrationSearchData($obj, array('document_srl', 'comment_srl'));
         $ids = $output->ids;
         $outputData = $output->data;
@@ -2330,10 +2610,10 @@ class elasticsearchModel extends elasticsearch
                         $_obj->type = 'image';
                         $thumbnail_path = sprintf('files/thumbnails/%s',getNumberingPath($val->file_srl, 3));
                         if(!is_dir($thumbnail_path)) FileHandler::makeDir($thumbnail_path);
-                        $thumbnail_file = sprintf('%s%dx%d.%s.jpg', $thumbnail_path, 120, 120, 'crop');
+                        $thumbnail_file = sprintf('%s%dx%d.%s.jpg', $thumbnail_path, 180, 180, 'crop');
                         $thumbnail_url  = Context::getRequestUri().$thumbnail_file;
-                        if(!file_exists($thumbnail_file)) FileHandler::createImageFile($val->uploaded_filename, $thumbnail_file, 120, 120, 'jpg', 'crop');
-                        $_obj->src = sprintf('<img src="%s" alt="%s" width="%d" height="%d" />', $thumbnail_url, htmlspecialchars($obj->filename, ENT_COMPAT | ENT_HTML401, 'UTF-8', false), 120, 120);
+                        if(!file_exists($thumbnail_file)) FileHandler::createImageFile($val->uploaded_filename, $thumbnail_file, 180, 180, 'jpg', 'crop');
+                        $_obj->src = sprintf('<img src="%s" alt="%s" width="%d" height="%d" />', $thumbnail_url, htmlspecialchars($obj->filename, ENT_COMPAT | ENT_HTML401, 'UTF-8', false), 180, 180);
                     }
                     else
                     {
