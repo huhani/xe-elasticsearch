@@ -2666,4 +2666,17 @@ class elasticsearchModel extends elasticsearch
         return $output;
     }
 
+    function isServerAvailable() {
+        if(self::$host && self::$port) {
+            try {
+                $client = self::getElasticEngineClient();
+                $ping = $client->ping();
+
+                return $ping;
+            } catch(Exception $e) {}
+        }
+
+        return false;
+    }
+
 }
