@@ -16,7 +16,8 @@ $install = $oElasticsearchAdminModel->getElasticSearchInstall(true);
 $arrImporter = array(
     $oElasticsearchAdminModel->getElasticSearchDocumentImporter(true),
     $oElasticsearchAdminModel->getElasticSearchCommentImporter(true),
-    $oElasticsearchAdminModel->getElasticSearchDocumentExtraVarsImporter(true)
+    $oElasticsearchAdminModel->getElasticSearchDocumentExtraVarsImporter(true),
+    $oElasticsearchAdminModel->getElasticSearchFileImporter(true)
 );
 
 
