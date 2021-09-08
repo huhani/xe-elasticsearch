@@ -24,8 +24,8 @@ class ElasticSearchInstall {
                 "tokenizer" => [
                     "my_t_ngram" => [
                         "type" => "ngram",
-                        "min_gram" => 2,
-                        "max_gram" => 3,
+                        "min_gram" => 1,
+                        "max_gram" => 2,
                         "token_chars"=> ['letter', 'digit']
                     ]
                 ],
@@ -37,8 +37,8 @@ class ElasticSearchInstall {
                     ],
                     "my_ngram" => [
                         "type" => "nGram",
-                        "min_gram" => 2,
-                        "max_gram" => 3,
+                        "min_gram" => 1,
+                        "max_gram" => 2,
                         "token_chars"=> ['letter', 'digit']
                     ],
                 ]
@@ -523,11 +523,10 @@ class ElasticSearchFileImporter extends ElasticSearchBaseImporter {
             $args->sort_index = "files.file_srl";
             $args->order_type = "asc";
             $args->list_count = max(1, $chunkCount);
-            if($endFileOffset < 0) {
-                $args->end_file_srl = "$endFileOffset";
+            if($endFileOffset >= 0) {
+                $args->end_file_srl = $endFileOffset;
             }
             $output = executeQueryArray('elasticsearch.getImportFile', $args);
-            //var_dump($output);
             if(!$output->toBool() || $output->data == null || count($output->data) === 0) {
                 break;
             }
@@ -936,40 +935,6 @@ class elasticsearchAdminModel extends elasticsearch
             ]
         ];
         $filter = [];
-        if($diff > 0) {
-            if($order_type === "desc") {
-                $filter[] = ["range" => [$sort_index => [
-                    "lte" => $approximatedOffset
-                ]]];
-                $params2['body']['sort'] = [
-                    $sort_index => "desc"
-                ];
-            } else {
-                $filter[] = ["range" => [$sort_index => [
-                    "gte" => $approximatedOffset
-                ]]];
-                $params2['body']['sort'] = [
-                    $sort_index => "asc"
-                ];
-            }
-        } else {
-            if($order_type === "desc") {
-                $filter[] = ["range" => [$sort_index => [
-                    "gte" => $approximatedOffset
-                ]]];
-                $params2['body']['sort'] = [
-                    $sort_index => "asc"
-                ];
-            } else {
-                $filter[] = ["range" => [$sort_index => [
-                    "lte" => $approximatedOffset
-                ]]];
-                $params2['body']['sort'] = [
-                    $sort_index => "desc"
-                ];
-            }
-        }
-
         if($search_target && $search_keyword) {
             $params2['body']['query'] = [
                 "bool" => [
@@ -982,19 +947,8 @@ class elasticsearchAdminModel extends elasticsearch
         if(count($filter) > 0) {
             $params2['body']['query']['bool']['filter'] = $filter;
         }
-        try {
-            $result = $client->search($params2);
-        } catch(Exception $e) {
-            $oElasticsearchController->insertErrorLog('search', $params2, $e);
-            return false;
-        }
 
-        $hits = $result['hits'];
-        $hitsData = $hits['hits'];
-        $last = end($hitsData);
-
-        return end($last['fields'][$sort_index]);
-
+        return $oElasticsearchModel->_getLastItem($params2, $diff, $approximatedOffset, $sort_index, $order_type);
     }
 
     function getIndexDocumentListFromSearchAfter($obj) {

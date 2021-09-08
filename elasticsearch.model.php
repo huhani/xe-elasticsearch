@@ -788,39 +788,6 @@ class elasticsearchModel extends elasticsearch
                     ];
                 }
                 $filter = [];
-                if($diff > 0) {
-                    if($order_type === "desc") {
-                        $filter[] = ["range" => [$sort_index => [
-                             "lte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            $sort_index => "desc"
-                        ];
-                    } else {
-                        $filter[] = ["range" => [$sort_index => [
-                            "gte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            $sort_index => "asc"
-                        ];
-                    }
-                } else {
-                    if($order_type === "desc") {
-                        $filter[] = ["range" => [$sort_index => [
-                            "gte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            $sort_index => "asc"
-                        ];
-                    } else {
-                        $filter[] = ["range" => [$sort_index => [
-                            "lte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            $sort_index => "desc"
-                        ];
-                    }
-                }
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
@@ -836,17 +803,7 @@ class elasticsearchModel extends elasticsearch
                     }
                 }
 
-                try {
-                    $result = $client->search($params2);
-                } catch(Exception $e) {
-                    $oElasticsearchController->insertErrorLog('search', $params2, $e);
-                    return false;
-                }
-                $hits = $result['hits'];
-                $hitsData = $hits['hits'];
-                $last = end($hitsData);
-
-                return end($last['fields'][$sort_index]);
+                return $this->_getLastItem($params2, $diff, $approximatedOffset, $sort_index, $order_type);
 
             case "title":
                 $params = [
@@ -929,40 +886,6 @@ class elasticsearchModel extends elasticsearch
                     ];
                 }
                 $filter = [];
-                if($diff > 0) {
-                    if($order_type === "desc") {
-                        $filter[] = ["range" => [$sort_index => [
-                            "lte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            $sort_index => "desc"
-                        ];
-                    } else {
-                        $filter[] = ["range" => [$sort_index => [
-                            "gte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            $sort_index => "asc"
-                        ];
-                    }
-                } else {
-                    if($order_type === "desc") {
-                        $filter[] = ["range" => [$sort_index => [
-                            "gte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            $sort_index => "asc"
-                        ];
-                    } else {
-                        $filter[] = ["range" => [$sort_index => [
-                            "lte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            $sort_index => "desc"
-                        ];
-                    }
-                }
-
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
@@ -977,17 +900,8 @@ class elasticsearchModel extends elasticsearch
                         $params2['body']['query']['bool']['filter'] = $filter;
                     }
                 }
-                try {
-                    $result = $client->search($params2);
-                } catch(Exception $e) {
-                    $oElasticsearchController->insertErrorLog('search', $params2, $e);
-                    return false;
-                }
-                $hits = $result['hits'];
-                $hitsData = $hits['hits'];
-                $last = end($hitsData);
 
-                return end($last['fields'][$sort_index]);
+                return $this->_getLastItem($params2, $diff, $approximatedOffset, $sort_index, $order_type);
 
             case "content":
                 $params = [
@@ -1065,40 +979,6 @@ class elasticsearchModel extends elasticsearch
                     ];
                 }
                 $filter = [];
-                if($diff > 0) {
-                    if($order_type === "desc") {
-                        $filter[] = ["range" => [$sort_index => [
-                            "lte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            $sort_index => "desc"
-                        ];
-                    } else {
-                        $filter[] = ["range" => [$sort_index => [
-                            "gte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            $sort_index => "asc"
-                        ];
-                    }
-                } else {
-                    if($order_type === "desc") {
-                        $filter[] = ["range" => [$sort_index => [
-                            "gte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            $sort_index => "asc"
-                        ];
-                    } else {
-                        $filter[] = ["range" => [$sort_index => [
-                            "lte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            $sort_index => "desc"
-                        ];
-                    }
-                }
-
                 if($category_srl) {
                     $filter[] = ["match" => ["category_srl" => $category_srl]];
                 }
@@ -1113,17 +993,8 @@ class elasticsearchModel extends elasticsearch
                         $params2['body']['query']['bool']['filter'] = $filter;
                     }
                 }
-                try {
-                    $result = $client->search($params2);
-                } catch(Exception $e) {
-                    $oElasticsearchController->insertErrorLog('search', $params2, $e);
-                    return false;
-                }
-                $hits = $result['hits'];
-                $hitsData = $hits['hits'];
-                $last = end($hitsData);
 
-                return end($last['fields'][$sort_index]);
+                return $this->_getLastItem($params2, $diff, $approximatedOffset, $sort_index, $order_type);
 
             case "extra_vars":
                 $params = [
@@ -1144,8 +1015,7 @@ class elasticsearchModel extends elasticsearch
                         ]
                     ]
                 ];
-                $filter = [];
-                $filter[] = ["range" => ["doc_".$sort_index => [
+                $params['body']['query']['bool']['filter'][] = ["range" => ["doc_".$sort_index => [
                     ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
                 ]]];
                 if($category_srl) {
@@ -1185,56 +1055,11 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false
                     ]
                 ];
-                $filter = [];
-                if($diff > 0) {
-                    if($order_type === "desc") {
-                        $filter[] = ["range" => ["doc_".$sort_index => [
-                            "lte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            "doc_".$sort_index => "desc"
-                        ];
-                    } else {
-                        $filter[] = ["range" => ["doc_".$sort_index => [
-                            "gte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            "doc_".$sort_index => "asc"
-                        ];
-                    }
-                } else {
-                    if($order_type === "desc") {
-                        $filter[] = ["range" => ["doc_".$sort_index => [
-                            "gte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            "doc_".$sort_index => "asc"
-                        ];
-                    } else {
-                        $filter[] = ["range" => ["doc_".$sort_index => [
-                            "lte" => $approximatedOffset
-                        ]]];
-                        $params2['body']['sort'] = [
-                            "doc_".$sort_index => "desc"
-                        ];
-                    }
-                }
-
                 if($category_srl) {
                     $params2['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
                 }
-                try {
-                    $result = $client->search($params2);
-                } catch(Exception $e) {
-                    $oElasticsearchController->insertErrorLog('search', $params2, $e);
-                    return false;
-                }
-                $hits = $result['hits'];
-                $hitsData = $hits['hits'];
-                $last = end($hitsData);
 
-                return end($last['fields'][$sort_index]);
-
+                return $this->_getLastItem($params2, $diff, $approximatedOffset, "doc_".$sort_index, $order_type);
         }
 
         return null;
@@ -1557,6 +1382,7 @@ class elasticsearchModel extends elasticsearch
 
             case "extra_vars":
                 $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
+                var_dump($search_after);
                 $_params = [
                     'index' => $prefix.'document_extra_vars',
                     'body' => [
@@ -1568,7 +1394,7 @@ class elasticsearchModel extends elasticsearch
                                     ["match" => ["value" => $search_keyword]]
                                 ],
                                 "filter" => [
-                                    ["term" => ["module_srl" => $module_srl]],
+                                    ["terms" => ["module_srl" => $module_srl]],
                                     ["term" => ["var_idx" => $varIdx]]
                                 ],
                                 "minimum_should_match" => 1
@@ -1586,7 +1412,7 @@ class elasticsearchModel extends elasticsearch
                 }
                 if($search_after) {
                     $filter[] = ["range" =>
-                        [$sort_index =>
+                        ["doc_".$sort_index =>
                             [($order_type === "asc" ? "gt" : "lt") => $search_after]
                         ]
                     ];
@@ -2156,8 +1982,6 @@ class elasticsearchModel extends elasticsearch
         if($approximatedOffset === false) {
             return false;
         }
-        //$approximatedOffset = "20210703020609";
-        //$approximatedOffset = "20210703002630";
 
         $params2 = [
             'index' => $params['index'],
@@ -2181,7 +2005,6 @@ class elasticsearchModel extends elasticsearch
         if($diff === 0) {
             return $approximatedOffset;
         }
-
         $params3 = [
             'index' => $params['index'],
             'body' => [
@@ -2192,52 +2015,7 @@ class elasticsearchModel extends elasticsearch
             ]
         ];
 
-        if($diff > 0) {
-            if($order_type === "desc") {
-                $params3['body']['query']['bool']['filter']['bool']['must'][] = ["range" => [$sort_index => [
-                    "lte" => $approximatedOffset
-                ]]];
-                $params3['body']['sort'] = [
-                    $sort_index => "desc"
-                ];
-            } else {
-                $params3['body']['query']['bool']['filter']['bool']['must'][] = ["range" => [$sort_index => [
-                    "gte" => $approximatedOffset
-                ]]];
-                $params3['body']['sort'] = [
-                    $sort_index => "asc"
-                ];
-            }
-        } else {
-            if($order_type === "desc") {
-                $params3['body']['query']['bool']['filter']['bool']['must'][] = ["range" => [$sort_index => [
-                    "gte" => $approximatedOffset
-                ]]];
-                $params3['body']['sort'] = [
-                    $sort_index => "asc"
-                ];
-            } else {
-                $params3['body']['query']['bool']['filter']['bool']['must'][] = ["range" => [$sort_index => [
-                    "lte" => $approximatedOffset
-                ]]];
-                $params3['body']['sort'] = [
-                    $sort_index => "desc"
-                ];
-            }
-        }
-
-        try {
-            $result = $client->search($params3);
-        } catch(Exception $e) {
-            $oElasticsearchController->insertErrorLog('search', $params3, $e);
-            return false;
-        }
-
-        $hits = $result['hits'];
-        $hitsData = $hits['hits'];
-        $last = end($hitsData);
-
-        return end($last['fields'][$sort_index]);
+        return $this->_getLastItem($params3, $diff, $approximatedOffset, $sort_index, $order_type);
     }
 
     function getIntegrationSearchDataFromSearchAfter($obj, $params) {
@@ -2677,6 +2455,101 @@ class elasticsearchModel extends elasticsearch
         }
 
         return false;
+    }
+
+    function _getLastItem($params, $diff, $approximatedOffset, $sort_index, $order_type) {
+        if(!isset($params['index'])) {
+            return null;
+        }
+        $client = self::getElasticEngineClient();
+        $oElasticsearchController = getController('elasticsearch');
+        $count = abs($diff) + ($diff < 0 ? 1 : 0);
+        $leftCount = $count;
+        $chunkCount = 3;
+        $nextOffset = $approximatedOffset;
+        while($leftCount > 0) {
+            $eachCount = $leftCount > $chunkCount ? $chunkCount : $leftCount;
+            $newParams = [
+                'index' => $params['index'],
+                'body' => [
+                    'size' => $eachCount,
+                    "fields" => $params['body']['fields'],
+                    "_source" => isset($params['body']['_source']) ? $params['body']['_source'] : false
+                ]
+
+            ];
+            if(isset($params['body']['query'])) {
+                $newParams['body']['query'] = $params['body']['query'];
+            }
+
+            $leftCount -= $eachCount;
+            $range = null;
+            $sort = null;
+            if($diff > 0) {
+                if($order_type === "desc") {
+                    $range = ["range" => [$sort_index => [
+                        ($count > $chunkCount ? "lt" : "lte") => $nextOffset
+                    ]]];
+                    $sort = [
+                        $sort_index => "desc"
+                    ];
+                } else {
+                    $range = ["range" => [$sort_index => [
+                        ($count > $chunkCount ? "gt" : "gte") => $nextOffset
+                    ]]];
+                    $sort = [
+                        $sort_index => "asc"
+                    ];
+                }
+            } else {
+                if($order_type === "desc") {
+                    $range = ["range" => [$sort_index => [
+                        ($count > $chunkCount ? "gt" : "gte") => $nextOffset
+                    ]]];
+                    $sort = [
+                        $sort_index => "asc"
+                    ];
+                } else {
+                    $range = ["range" => [$sort_index => [
+                        ($count > $chunkCount ? "lt" : "lte") => $nextOffset
+                    ]]];
+                    $sort = [
+                        $sort_index => "desc"
+                    ];
+                }
+            }
+            $newParams['body']['sort'] = $sort;
+            if(isset($newParams['body']['query']['bool']['filter'])) {
+                if(isset($newParams['body']['query']['bool']['filter']['bool'])) {
+                    $newParams['body']['query']['bool']['filter']['bool']['must'][] = $range;
+                } else {
+                    $newParams['body']['query']['bool']['filter'][] = $range;
+                }
+            } else {
+                if(!isset($newParams['body']['query'])) {
+                    $newParams['body']['query'] = [];
+                }
+                if(!isset($newParams['body']['query']['bool'])) {
+                    $newParams['body']['query']['bool'] = [];
+                }
+                if(!isset($newParams['body']['query']['bool']['filter'])) {
+                    $newParams['body']['query']['bool']['filter'] = [];
+                }
+                $newParams['body']['query']['bool']['filter'][] = $range;
+            }
+            try {
+                $result = $client->search($newParams);
+            } catch(Exception $e) {
+                $oElasticsearchController->insertErrorLog('search', $newParams, $e);
+                return null;
+            }
+            $hits = $result['hits'];
+            $hitsData = $hits['hits'];
+            $last = end($hitsData);
+            $nextOffset = end($last['fields'][$sort_index]);
+        }
+
+        return $nextOffset;
     }
 
 }
