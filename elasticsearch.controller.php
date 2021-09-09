@@ -270,10 +270,19 @@ class elasticsearchController extends elasticsearch
 
     function insertDocument($obj) {
         $oElasticsearchModel = getModel('elasticsearch');
+        $oMemberModel = getModel('member');
+        $member_srl = isset($obj->member_srl) ? $obj->member_srl : 0;
         $client = $oElasticsearchModel::getElasticEngineClient();
         $prefix = $oElasticsearchModel::getElasticEnginePrefix();
+        $user_id = "";
         if($prefix) {
             $prefix .= "_";
+        }
+        if($member_srl > 0) {
+            $oMemberInfo = $oMemberModel->getMemberInfoByMemberSrl($member_srl);
+            if($oMemberInfo) {
+                $user_id = $oMemberInfo->user_id;
+            }
         }
 
         $docData = array();
@@ -282,7 +291,7 @@ class elasticsearchController extends elasticsearch
         $docData['category_srl'] = isset($obj->category_srl) ? $obj->category_srl : 0;
         $docData['title'] = isset($obj->title) ? $obj->title : "";
         $docData['content'] =  $obj->content;
-        $docData['user_id'] = isset($obj->user_id) ? $obj->user_id : "";
+        $docData['user_id'] = $user_id;
         $docData['user_name'] = isset($obj->user_name) ? $obj->user_name : "";
         $docData['nick_name'] = $obj->nick_name;
         $docData['member_srl'] = isset($obj->member_srl) ? $obj->member_srl : 0;
@@ -290,7 +299,7 @@ class elasticsearchController extends elasticsearch
         $docData['tags'] = isset($obj->tags) ? $obj->tags : null;
         $docData['regdate'] = isset($obj->regdate) ? $obj->regdate : date("YmdHis");
         $docData['ipaddress'] = isset($obj->ipaddress) ? $obj->ipaddress : $_SERVER['REMOTE_ADDR'];
-        $docData['list_order'] = isset($obj->list_order) ? $obj->list_order : 0;
+        $docData['list_order'] = isset($obj->list_order) ? $obj->list_order : (-1 * $obj->document_srl);
         $docData['status'] = isset($obj->status) ? $obj->status : "PUBLIC";
         $docData['comment_status'] = isset($obj->comment_status) ? $obj->comment_status : "ALLOW";
         $params = [
@@ -307,7 +316,7 @@ class elasticsearchController extends elasticsearch
             $this->insertErrorLog('index', $params, $e);
         }
         if($response) {
-            $this->insertExtraVars($obj->document_srl, $docData['list_order'], $docData['user_id'], $docData['regdate'], $docData['member_srl']);
+            $this->insertExtraVars($obj->document_srl, $docData['list_order'], $docData['user_id'], $docData['regdate'], $docData['member_srl'], $docData['status']);
             $this->setFileValid($obj->document_srl, "Y", $obj->document_srl);
         }
     }
@@ -361,6 +370,7 @@ class elasticsearchController extends elasticsearch
         $cmtData['doc_user_id'] = $oDocument->get('user_id');
         $cmtData['doc_regdate'] = $oDocument->get('regdate');
         $cmtData['doc_member_srl'] = $oDocument->get('member_srl');
+        $cmtData['doc_status'] = $doc_status;
         $params = [
             'index' => $prefix.'comments',
             'id' => $obj->comment_srl,
@@ -458,7 +468,7 @@ class elasticsearchController extends elasticsearch
 
     }
 
-    function insertExtraVars($document_srl, $list_order, $user_id, $regdate, $member_srl) {
+    function insertExtraVars($document_srl, $list_order, $user_id, $regdate, $member_srl, $doc_status) {
         if(!$document_srl) {
             return;
         }
@@ -490,6 +500,7 @@ class elasticsearchController extends elasticsearch
             $obj['doc_user_id'] = $user_id;
             $obj['doc_regdate'] = $regdate;
             $obj['doc_member_srl'] = $member_srl;
+            $obj['doc_status'] = $doc_status;
             $paramsArray['body'][] = $extraVarsIndex;
             $paramsArray['body'][] = $obj;
         }

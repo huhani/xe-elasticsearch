@@ -107,7 +107,8 @@ class ElasticSearchInstall {
             "doc_user_id" => ["type" => "keyword"],
             "doc_regdate" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
             "doc_member_srl" => ["type" => "long"],
-            "doc_category_srl" => ["type" => "long"]
+            "doc_category_srl" => ["type" => "long"],
+            "doc_status" => ["type" => "keyword"]
         ],
         "comments" => [
             "comment_srl" => ["type" => "long"],
