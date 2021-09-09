@@ -327,7 +327,6 @@ class elasticsearchModel extends elasticsearch
 
                 return false;
 
-
             case "extra_vars":
                 $params = [
                     'index' => $prefix.'document_extra_vars',
@@ -1382,7 +1381,6 @@ class elasticsearchModel extends elasticsearch
 
             case "extra_vars":
                 $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
-                var_dump($search_after);
                 $_params = [
                     'index' => $prefix.'document_extra_vars',
                     'body' => [
@@ -1517,7 +1515,6 @@ class elasticsearchModel extends elasticsearch
             }
             $_searchTarget = "extra_vars";
         }
-
         switch ($_searchTarget) {
             case "title_content" :
                 $params = [
@@ -1735,8 +1732,10 @@ class elasticsearchModel extends elasticsearch
                                 ],
                                 "filter" => [
                                     'bool' => [
-                                        ["terms" => ["module_srl" => [$module_srl]]],
-                                        ["term" => ["var_idx" => $varIdx]]
+                                        'must' => [
+                                            ["terms" => ["module_srl" => $module_srl]],
+                                            ["term" => ["var_idx" => $varIdx]]
+                                        ]
                                     ]
                                 ],
                                 "minimum_should_match" => 1
@@ -1765,7 +1764,7 @@ class elasticsearchModel extends elasticsearch
                 $oElasticsearchController->insertErrorLog('search', $params, $e);
                 return null;
             }
-            
+
             $output = $this->getDocumentListFromSearchResponse($response, $page, $list_count, $page_count, $isExtraVars, $columnList);
 
             return $output;
