@@ -905,7 +905,7 @@ class elasticsearchController extends elasticsearch
         return true;
     }
 
-    function forecMerge($indexName) {
+    function forceMerge($indexName) {
         $oElasticsearchModel = getModel('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
         $params = [

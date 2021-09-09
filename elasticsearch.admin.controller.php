@@ -32,7 +32,7 @@ class elasticsearchAdminController extends elasticsearch
             return new BaseObject(-1, "올바르지 않거나 존재하지 않는 인덱스입니다.");
         }
 
-        $output = $oElasticsearchController->forecMerge($targetIndex);
+        $output = $oElasticsearchController->forceMerge($targetIndex);
 
         $this->add("result", $output);
     }
