@@ -121,9 +121,6 @@ class elasticsearchModel extends elasticsearch
         if($prefix) {
             $prefix .= "_";
         }
-        $module_srl = isset($obj->module_srl) && $obj->module_srl ? explode(',', $obj->module_srl) : null;
-        $exclude_module_srl = isset($obj->exclude_module_srl) && $obj->exclude_module_srl ? explode(',', $obj->exclude_module_srl) : null;
-        $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
         $search_target = $obj->search_target;
         $search_keyword = $obj->search_keyword;
         $_searchTarget = $search_target;
@@ -138,6 +135,7 @@ class elasticsearchModel extends elasticsearch
         }
 
         $params = null;
+        $filterMust = array();
         switch ($_searchTarget) {
             case "title_content" :
                 $params = [
@@ -158,33 +156,7 @@ class elasticsearchModel extends elasticsearch
                         ]
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
-                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
-
+                $this->_setParamFilter($params, $obj, $filterMust);
                 try {
                     $result = $client->count($params);
                     return $result['count'];
@@ -207,32 +179,7 @@ class elasticsearchModel extends elasticsearch
                         ],
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
-                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
                 try {
                     $result = $client->count($params);
                     return $result['count'];
@@ -255,32 +202,7 @@ class elasticsearchModel extends elasticsearch
                         ]
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
-                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
                 try {
                     $result = $client->count($params);
                     return $result['count'];
@@ -307,17 +229,7 @@ class elasticsearchModel extends elasticsearch
                         ],
                     ]
                 ];
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["doc_category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                }
-                if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
-                }
-
+                $this->_setParamFilter($params, $obj, $filterMust);
                 try {
                     $result = $client->search($params);
                     return $result['aggregations']['document_count']['value'];
@@ -337,18 +249,12 @@ class elasticsearchModel extends elasticsearch
                                     ["match_phrase" => ["value.my_ngram" => $search_keyword]],
                                     ["match" => ["value" => $search_keyword]]
                                 ],
-                                "filter" => [
-                                    ["terms" => ["module_srl" => $module_srl]],
-                                    ["term" => ["var_idx" => $varIdx]]
-                                ],
                                 "minimum_should_match" => 1
                             ]
                         ]
                     ]
                 ];
-                if($category_srl) {
-                    $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
 
                 try {
                     $result = $client->count($params);
@@ -377,14 +283,11 @@ class elasticsearchModel extends elasticsearch
         if($prefix) {
             $prefix .= "_";
         }
-        $module_srl = isset($obj->module_srl) && $obj->module_srl ? explode(',', $obj->module_srl) : null;
-        $exclude_module_srl = isset($obj->exclude_module_srl) && $obj->exclude_module_srl ? explode(',', $obj->exclude_module_srl) : null;
         $page = $obj->page;
         if(!$page || $page < 1) {
             $page = 1;
         }
         $list_count = $obj->list_count;
-        $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
         $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
         $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
         $search_target = $obj->search_target;
@@ -397,6 +300,7 @@ class elasticsearchModel extends elasticsearch
         }
         $_searchTarget = $search_target;
         $varIdx = -1;
+        $filterMust = array();
         if(strpos($_searchTarget, "extra_vars") !== false) {
             $str = explode("extra_vars", $_searchTarget);
             $varIdx = (int)$str[1];
@@ -438,32 +342,7 @@ class elasticsearchModel extends elasticsearch
 
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
-                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
                 try {
                     $result = $client->search($params);
                 } catch(Exception $e) {
@@ -502,32 +381,7 @@ class elasticsearchModel extends elasticsearch
 
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
-                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
                 try {
                     $result = $client->search($params);
                 } catch(Exception $e) {
@@ -565,32 +419,7 @@ class elasticsearchModel extends elasticsearch
 
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
-                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
                 try {
                     $result = $client->search($params);
                 } catch(Exception $e) {
@@ -614,10 +443,6 @@ class elasticsearchModel extends elasticsearch
                                     ["match_phrase" => ["value.my_ngram" => $search_keyword]],
                                     ["match" => ["value" => $search_keyword]]
                                 ],
-                                "filter" => [
-                                    ["terms" => ["module_srl" => $module_srl]],
-                                    ["term" => ["var_idx" => $varIdx]]
-                                ],
                                 "minimum_should_match" => 1
                             ]
                         ],
@@ -633,9 +458,7 @@ class elasticsearchModel extends elasticsearch
 
                     ]
                 ];
-                if($category_srl) {
-                    $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
                 try {
                     $result = $client->search($params);
                 } catch(Exception $e) {
@@ -655,7 +478,6 @@ class elasticsearchModel extends elasticsearch
 
     function getIndexAfterOffset($obj, $total_count = 0) {
         $oElasticsearchController = getController('elasticsearch');
-        $chunkSize = 10000;
         if($total_count === -1) {
             $total_count = $this->getIndexDocumentSearchCount($obj);
         }
@@ -664,11 +486,8 @@ class elasticsearchModel extends elasticsearch
         if($prefix) {
             $prefix .= "_";
         }
-        $module_srl = isset($obj->module_srl) && $obj->module_srl ? explode(',', $obj->module_srl) : null;
-        $exclude_module_srl = isset($obj->exclude_module_srl) && $obj->exclude_module_srl ? explode(',', $obj->exclude_module_srl) : null;
         $page = $obj->page;
         $list_count = $obj->list_count;
-        $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
         $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
         $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
         $search_target = $obj->search_target;
@@ -692,6 +511,8 @@ class elasticsearchModel extends elasticsearch
         if($approximatedOffset === false) {
             return false;
         }
+        $filterMust = [];
+
         switch ($_searchTarget) {
             case "title_content" :
                 $params = [
@@ -712,36 +533,11 @@ class elasticsearchModel extends elasticsearch
                         ]
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                $filter[] = ["range" => [$sort_index => [
+
+                $filterMust[] = ["range" => [$sort_index => [
                     ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
                 ]]];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
-                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
-
+                $this->_setParamFilter($params, $obj, $filterMust);
                 try {
                     $result = $client->count($params);
                 } catch(Exception $e) {
@@ -775,32 +571,8 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params2['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params2['body']['query']['bool']['filter']) && isset($params2['body']['query']['bool']['filter']['bool'])) {
-                        $params2['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params2['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
+                $filterMust = array();
+                $this->_setParamFilter($params2, $obj, $filterMust);
 
                 return $this->_getLastItem($params2, $diff, $approximatedOffset, $sort_index, $order_type);
 
@@ -817,35 +589,10 @@ class elasticsearchModel extends elasticsearch
                         ]
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                $filter[] = ["range" => [$sort_index => [
+                $filterMust[] = ["range" => [$sort_index => [
                     ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
                 ]]];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["match" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
-                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
                 try {
                     $result = $client->count($params);
                 } catch(Exception $e) {
@@ -873,32 +620,8 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params2['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params2['body']['query']['bool']['filter']) && isset($params2['body']['query']['bool']['filter']['bool'])) {
-                        $params2['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params2['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
+                $filterMust = array();
+                $this->_setParamFilter($params2, $obj, $filterMust);
 
                 return $this->_getLastItem($params2, $diff, $approximatedOffset, $sort_index, $order_type);
 
@@ -915,36 +638,16 @@ class elasticsearchModel extends elasticsearch
                         ]
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                $filter[] = ["range" => [$sort_index => [
+                $filterMust[] = ["range" => [$sort_index => [
                     ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
                 ]]];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
+                $this->_setParamFilter($params, $obj, $filterMust);
+                try {
+                    $result = $client->count($params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('count', $params, $e);
+                    return false;
                 }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
-                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
-                $result = $client->count($params);
                 $count = $result['count'];
                 $diff = (int)($from-$count);
                 if($diff === 0) {
@@ -966,32 +669,8 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params2['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params2['body']['query']['bool']['filter']) && isset($params2['body']['query']['bool']['filter']['bool'])) {
-                        $params2['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params2['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
+                $filterMust = array();
+                $this->_setParamFilter($params2, $obj, $filterMust);
 
                 return $this->_getLastItem($params2, $diff, $approximatedOffset, $sort_index, $order_type);
 
@@ -1005,21 +684,15 @@ class elasticsearchModel extends elasticsearch
                                     ["match_phrase" => ["value.my_ngram" => $search_keyword]],
                                     ["match" => ["value" => $search_keyword]]
                                 ],
-                                "filter" => [
-                                    ["terms" => ["module_srl" => $module_srl]],
-                                    ["term" => ["var_idx" => $varIdx]]
-                                ],
                                 "minimum_should_match" => 1
                             ]
                         ]
                     ]
                 ];
-                $params['body']['query']['bool']['filter'][] = ["range" => ["doc_".$sort_index => [
+                $filterMust[] = ["range" => ["doc_".$sort_index => [
                     ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
                 ]]];
-                if($category_srl) {
-                    $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
                 try {
                     $result = $client->count($params);
                 } catch(Exception $e) {
@@ -1043,10 +716,6 @@ class elasticsearchModel extends elasticsearch
                                     ["match_phrase" => ["value.my_ngram" => $search_keyword]],
                                     ["match" => ["value" => $search_keyword]]
                                 ],
-                                "filter" => [
-                                    ["terms" => ["module_srl" => $module_srl]],
-                                    ["term" => ["var_idx" => $varIdx]]
-                                ],
                                 "minimum_should_match" => 1
                             ]
                         ],
@@ -1054,9 +723,8 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false
                     ]
                 ];
-                if($category_srl) {
-                    $params2['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
-                }
+                $filterMust = array();
+                $this->_setParamFilter($params2, $obj, $filterMust);
 
                 return $this->_getLastItem($params2, $diff, $approximatedOffset, "doc_".$sort_index, $order_type);
         }
@@ -1072,16 +740,14 @@ class elasticsearchModel extends elasticsearch
         $prefix = self::getElasticEnginePrefix();
         $client = self::getElasticEngineClient();
         $isExtraVars = $obj->isExtraVars;
-        $module_srl = isset($obj->module_srl) && $obj->module_srl ? explode(',', $obj->module_srl) : null;
-        $exclude_module_srl = isset($obj->exclude_module_srl) && $obj->exclude_module_srl ? explode(',', $obj->exclude_module_srl) : null;
         $page = $obj->page;
         $list_count = $obj->list_count;
         $page_count = $obj->page_count;
-        $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
         $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
         $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
         $search_target = $obj->search_target;
         $search_keyword = $obj->search_keyword;
+        $total_page = max(1, ceil($total_count / $list_count));
         $fromPage = max(0, $page-1);
         $endPage = $fromPage + 1;
         $from = $fromPage * $list_count;
@@ -1110,327 +776,234 @@ class elasticsearchModel extends elasticsearch
         $leftOffset = $moveOffset;
         $afterFromOffset = $from - $moveOffset;
         $afterSizeOffset = $end - $moveOffset;
-        switch ($_searchTarget) {
-            case "title_content" :
-                $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
-                $_params = [
-                    'index' => $prefix.'documents',
-                    'body' => [
-                        "size" => $list_count,
-                        'query' => [
-                            "bool" => [
-                                "must" => [
-                                    ["bool" => [
-                                        "should" => [
-                                            ["match_phrase" => ["title.my_ngram" => $search_keyword]],
-                                            ["match_phrase" => ["content.my_ngram" => $search_keyword]]
-                                        ]
-                                    ]]
-                                ]
-                            ]
-                        ],
-                        "fields" => ["document_srl"],
-                        'sort' => [
-                            $sort_index => $order_type
-                        ],
-                        "_source" => false,
-                    ]
-                ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $_params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if($search_after) {
-                    $filter[] = ["range" =>
-                        [$sort_index =>
-                            [($order_type === "asc" ? "gt" : "lt") => $search_after]
-                        ]
-                    ];
-                }
-                if(count($filter) > 0) {
-                    if(isset($_params['body']['query']['bool']['filter']) && isset($_params['body']['query']['bool']['filter']['bool'])) {
-                        $_params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $_params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
-
-                try {
-                    $_result = $client->search($_params);
-                } catch(Exception $e) {
-                    $oElasticsearchController->insertErrorLog('search', $_params, $e);
-                    $_result = null;
-                }
-
-                break;
-
-            case "title":
-                $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
-                $_params = [
-                    'index' => $prefix.'documents',
-                    'body' => [
-                        "size" => $list_count,
-                        'query' => [
-                            "bool" => [
-                                "must" => [
-                                    ["match_phrase" => ["title.my_ngram" => $search_keyword]]
-                                ]
-                            ]
-                        ],
-                        "fields" => ["document_srl"],
-                        'sort' => [
-                            $sort_index => $order_type
-                        ],
-                        "_source" => false,
-                    ]
-                ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $_params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if($search_after) {
-                    $filter[] = ["range" =>
-                        [$sort_index =>
-                            [($order_type === "asc" ? "gt" : "lt") => $search_after]
-                        ]
-                    ];
-                }
-                if(count($filter) > 0) {
-                    if(isset($_params['body']['query']['bool']['filter']) && isset($_params['body']['query']['bool']['filter']['bool'])) {
-                        $_params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $_params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
-                try {
-                    $_result = $client->search($_params);
-                } catch(Exception $e) {
-                    $oElasticsearchController->insertErrorLog('search', $_params, $e);
-                    $_result = null;
-                }
-                break;
-
-            case "content":
-                $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
-                $_params = [
-                    'index' => $prefix.'documents',
-                    'body' => [
-                        "size" => $list_count,
-                        'query' => [
-                            "bool" => [
-                                "must" => [
-                                    ["match_phrase" => ["content.my_ngram" => $search_keyword]]
-                                ]
-                            ]
-                        ],
-                        "fields" => ["document_srl"],
-                        'sort' => [
-                            $sort_index => $order_type
-                        ],
-                        "_source" => false,
-                    ]
-                ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $_params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if($search_after) {
-                    $filter[] = ["range" =>
-                        [$sort_index =>
-                            [($order_type === "asc" ? "gt" : "lt") => $search_after]
-                        ]
-                    ];
-                }
-                if(count($filter) > 0) {
-                    if(isset($_params['body']['query']['bool']['filter']) && isset($_params['body']['query']['bool']['filter']['bool'])) {
-                        $_params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $_params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
-                try {
-                    $_result = $client->search($_params);
-                } catch(Exception $e) {
-                    $oElasticsearchController->insertErrorLog('search', $_params, $e);
-                    $_result = null;
-                }
-                break;
-
-            case "comment":
-                $afterRegdate = null;
-                $afterListOrder = null;
-                while(true) {
-                    $params = [
-                        'index' => $prefix.'comments',
+        $filterMust = array();
+        if($page <= $total_page) {
+            switch ($_searchTarget) {
+                case "title_content" :
+                    $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
+                    $_params = [
+                        'index' => $prefix.'documents',
                         'body' => [
-                            "size" => 0,
+                            "size" => $list_count,
                             'query' => [
                                 "bool" => [
                                     "must" => [
-                                        ["match_phrase" => ["content.my_ngram" => $search_keyword]],
-                                        ["exists" => ["field" => "doc_".$sort_index]]
+                                        ["bool" => [
+                                            "should" => [
+                                                ["match_phrase" => ["title.my_ngram" => $search_keyword]],
+                                                ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                            ]
+                                        ]]
                                     ]
                                 ]
+                            ],
+                            "fields" => ["document_srl"],
+                            'sort' => [
+                                $sort_index => $order_type
                             ],
                             "_source" => false,
-                            'aggs' => [
-                                'group_by_document_srl' => [
-                                    "terms" => [
-                                        "field" => "document_srl",
-                                        "size" => $leftOffset > 0 ? $chunkSize : $afterSizeOffset,
-                                        "order" => ["doc_".$sort_index => $order_type]
-                                    ],
-                                    'aggs' => [
-                                        'doc_regdate' => ["min" => ["field" => "doc_regdate"]],
-                                        'doc_list_order' => ["min" => ["field" => "doc_list_order"]]
-                                    ]
-                                ]
-                            ],
                         ]
                     ];
-                    $filter = [];
-                    if($category_srl) {
-                        $filter[] = ["match" => ["doc_category_srl" => $category_srl]];
-                    }
-                    if($module_srl) {
-                        $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                        $filter[] = ["match" => ["doc_status" => "PUBLIC"]];
-                    }
-                    if(count($filter) > 0) {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                    if($afterRegdate || $afterListOrder) {
-                        $params['body']['query']['bool']['must'][] = ["range" =>
-                            ["doc_".$sort_index =>
-                                [($order_type === "asc" ? "gt" : "lt") => $afterRegdate ? $afterRegdate : $afterRegdate]
+                    if($search_after) {
+                        $filterMust[] = ["range" =>
+                            [$sort_index =>
+                                [($order_type === "asc" ? "gt" : "lt") => $search_after]
                             ]
                         ];
                     }
-
+                    $this->_setParamFilter($_params, $obj, $filterMust);
                     try {
-                        $result = $client->search($params);
-                        $aggregations = $result['aggregations'];
-                        $group_by_document_srl = $aggregations['group_by_document_srl'];
-                        $buckets = $group_by_document_srl['buckets'];
-                        if($leftOffset > 0) {
-                            $leftOffset -= $chunkSize;
-                            $last = end($buckets);
-                            if("doc_".$sort_index === "doc_regdate") {
-                                $afterRegdate = $last['doc_regdate']['value_as_string'];
-                            } else {
-                                $afterListOrder = $last['doc_list_order']['value'];
-                            }
-
-                            continue;
-                        }
-
-                        $_result = $result;
+                        $_result = $client->search($_params);
                     } catch(Exception $e) {
-                        $oElasticsearchController->insertErrorLog('search', $params, $e);
+                        $oElasticsearchController->insertErrorLog('search', $_params, $e);
                         $_result = null;
                     }
 
                     break;
-                }
-                break;
 
-            case "extra_vars":
-                $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
-                $_params = [
-                    'index' => $prefix.'document_extra_vars',
-                    'body' => [
-                        "size" => $list_count,
-                        'query' => [
-                            "bool" => [
-                                "should" => [
-                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]],
-                                    ["match" => ["value" => $search_keyword]]
-                                ],
-                                "filter" => [
-                                    ["terms" => ["module_srl" => $module_srl]],
-                                    ["term" => ["var_idx" => $varIdx]]
-                                ],
-                                "minimum_should_match" => 1
-                            ]
-                        ],
-                        "fields" => ["document_srl"],
-                        'sort' => [
-                            "doc_".$sort_index => $order_type
-                        ],
-                        "_source" => false,
-                    ]
-                ];
-                if($category_srl) {
-                    $_params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
-                }
-                if($search_after) {
-                    $filter[] = ["range" =>
-                        ["doc_".$sort_index =>
-                            [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                case "title":
+                    $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
+                    $_params = [
+                        'index' => $prefix.'documents',
+                        'body' => [
+                            "size" => $list_count,
+                            'query' => [
+                                "bool" => [
+                                    "must" => [
+                                        ["match_phrase" => ["title.my_ngram" => $search_keyword]]
+                                    ]
+                                ]
+                            ],
+                            "fields" => ["document_srl"],
+                            'sort' => [
+                                $sort_index => $order_type
+                            ],
+                            "_source" => false,
                         ]
                     ];
-                }
-                if(count($filter) > 0) {
-                    $_params['body']['query']['bool']['filter'] = $filter;
-                }
-                try {
-                    $_result = $client->search($_params);
-                } catch(Exception $e) {
-                    $oElasticsearchController->insertErrorLog('search', $_params, $e);
-                    $_result = null;
-                }
+                    if($search_after) {
+                        $filterMust[] = ["range" =>
+                            [$sort_index =>
+                                [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                            ]
+                        ];
+                    }
+                    $this->_setParamFilter($_params, $obj, $filterMust);
+                    try {
+                        $_result = $client->search($_params);
+                    } catch(Exception $e) {
+                        $oElasticsearchController->insertErrorLog('search', $_params, $e);
+                        $_result = null;
+                    }
+                    break;
 
-                break;
+                case "content":
+                    $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
+                    $_params = [
+                        'index' => $prefix.'documents',
+                        'body' => [
+                            "size" => $list_count,
+                            'query' => [
+                                "bool" => [
+                                    "must" => [
+                                        ["match_phrase" => ["content.my_ngram" => $search_keyword]]
+                                    ]
+                                ]
+                            ],
+                            "fields" => ["document_srl"],
+                            'sort' => [
+                                $sort_index => $order_type
+                            ],
+                            "_source" => false,
+                        ]
+                    ];
+                    if($search_after) {
+                        $filterMust[] = ["range" =>
+                            [$sort_index =>
+                                [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                            ]
+                        ];
+                    }
+                    $this->_setParamFilter($_params, $obj, $filterMust);
+                    try {
+                        $_result = $client->search($_params);
+                    } catch(Exception $e) {
+                        $oElasticsearchController->insertErrorLog('search', $_params, $e);
+                        $_result = null;
+                    }
+                    break;
 
-            default:
-                return null;
+                case "comment":
+                    $afterRegdate = null;
+                    $afterListOrder = null;
+                    while(true) {
+                        $filterMust = [];
+                        $params = [
+                            'index' => $prefix.'comments',
+                            'body' => [
+                                "size" => 0,
+                                'query' => [
+                                    "bool" => [
+                                        "must" => [
+                                            ["match_phrase" => ["content.my_ngram" => $search_keyword]],
+                                            ["exists" => ["field" => "doc_".$sort_index]]
+                                        ]
+                                    ]
+                                ],
+                                "_source" => false,
+                                'aggs' => [
+                                    'group_by_document_srl' => [
+                                        "terms" => [
+                                            "field" => "document_srl",
+                                            "size" => $leftOffset > 0 ? $chunkSize : $afterSizeOffset,
+                                            "order" => ["doc_".$sort_index => $order_type]
+                                        ],
+                                        'aggs' => [
+                                            'doc_regdate' => ["min" => ["field" => "doc_regdate"]],
+                                            'doc_list_order' => ["min" => ["field" => "doc_list_order"]]
+                                        ]
+                                    ]
+                                ],
+                            ]
+                        ];
+                        if($afterRegdate || $afterListOrder) {
+                            $filterMust[] = ["range" =>
+                                ["doc_".$sort_index =>
+                                    [($order_type === "asc" ? "gt" : "lt") => $afterRegdate ? $afterRegdate : $afterRegdate]
+                                ]
+                            ];
+                        }
+                        $this->_setParamFilter($params, $obj, $filterMust);
+                        try {
+                            $result = $client->search($params);
+                            $aggregations = $result['aggregations'];
+                            $group_by_document_srl = $aggregations['group_by_document_srl'];
+                            $buckets = $group_by_document_srl['buckets'];
+                            if($leftOffset > 0) {
+                                $leftOffset -= $chunkSize;
+                                $last = end($buckets);
+                                if("doc_".$sort_index === "doc_regdate") {
+                                    $afterRegdate = $last['doc_regdate']['value_as_string'];
+                                } else {
+                                    $afterListOrder = $last['doc_list_order']['value'];
+                                }
+
+                                continue;
+                            }
+
+                            $_result = $result;
+                        } catch(Exception $e) {
+                            $oElasticsearchController->insertErrorLog('search', $params, $e);
+                            $_result = null;
+                        }
+
+                        break;
+                    }
+                    break;
+
+                case "extra_vars":
+                    $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
+                    $_params = [
+                        'index' => $prefix.'document_extra_vars',
+                        'body' => [
+                            "size" => $list_count,
+                            'query' => [
+                                "bool" => [
+                                    "should" => [
+                                        ["match_phrase" => ["value.my_ngram" => $search_keyword]],
+                                        ["match" => ["value" => $search_keyword]]
+                                    ],
+                                    "minimum_should_match" => 1
+                                ]
+                            ],
+                            "fields" => ["document_srl"],
+                            'sort' => [
+                                "doc_".$sort_index => $order_type
+                            ],
+                            "_source" => false,
+                        ]
+                    ];
+                    if($search_after) {
+                        $filterMust[] = ["range" =>
+                            ["doc_".$sort_index =>
+                                [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                            ]
+                        ];
+                    }
+                    $this->_setParamFilter($_params, $obj, $filterMust);
+                    try {
+                        $_result = $client->search($_params);
+                    } catch(Exception $e) {
+                        $oElasticsearchController->insertErrorLog('search', $_params, $e);
+                        $_result = null;
+                    }
+
+                    break;
+
+                default:
+                    return null;
+            }
         }
-
         $documentSrls = array();
         $data = array();
         $last_id = $total_count - (($page-1) * $list_count);
@@ -1461,7 +1034,7 @@ class elasticsearchModel extends elasticsearch
             }
         }
 
-        $total_page = max(1, ceil($total_count / $list_count));
+
         $page_navigation = new PageHandler($total_count, $total_page, $page, $page_count);
 
         $output = new BaseObject();
@@ -1481,13 +1054,9 @@ class elasticsearchModel extends elasticsearch
         }
         $prefix = self::getElasticEnginePrefix();
         $isExtraVars = $obj->isExtraVars;
-        $module_srl = isset($obj->module_srl) && $obj->module_srl ? explode(',', $obj->module_srl) : null;
-        $exclude_module_srl = isset($obj->exclude_module_srl) && $obj->exclude_module_srl ? explode(',', $obj->exclude_module_srl) : null;
-
         $page = $obj->page;
         $list_count = $obj->list_count;
         $page_count = $obj->page_count;
-        $category_srl = isset($obj->category_srl) ? $obj->category_srl : 0;
         $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
         $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
         $search_target = $obj->search_target;
@@ -1507,6 +1076,7 @@ class elasticsearchModel extends elasticsearch
 
         $_searchTarget = $search_target;
         $varIdx = -1;
+        $filterMust = array();
         if(strpos($_searchTarget, "extra_vars") !== false) {
             $str = explode("extra_vars", $_searchTarget);
             $varIdx = (int)$str[1];
@@ -1542,32 +1112,7 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false,
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
-                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
                 break;
 
             case "title":
@@ -1590,32 +1135,7 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false,
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
-                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
                 break;
 
             case "content":
@@ -1638,32 +1158,7 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false,
                     ]
                 ];
-                if($exclude_module_srl && count($exclude_module_srl) > 0) {
-                    $params['body']['query']['bool']['filter'] = [
-                        "bool" => [
-                            "must_not" => [
-                                "terms" => [
-                                    "module_srl" => $exclude_module_srl
-                                ]
-                            ]
-                        ]
-                    ];
-                }
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
-                        $params['body']['query']['bool']['filter']['bool']['must'] = $filter;
-                    } else {
-                        $params['body']['query']['bool']['filter'] = $filter;
-                    }
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
                 break;
 
             case "comment":
@@ -1705,17 +1200,8 @@ class elasticsearchModel extends elasticsearch
                         ],
                     ]
                 ];
-                $filter = [];
-                if($category_srl) {
-                    $filter[] = ["match" => ["doc_category_srl" => $category_srl]];
-                }
-                if($module_srl) {
-                    $filter[] = ["terms" => ["module_srl" => $module_srl]];
-                    $filter[] = ["match" => ["doc_status" => "PUBLIC"]];
-                }
-                if(count($filter) > 0) {
-                    $params['body']['query']['bool']['filter'] = $filter;
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
+
                 break;
 
             case "extra_vars":
@@ -1730,14 +1216,6 @@ class elasticsearchModel extends elasticsearch
                                     ["match_phrase" => ["value.my_ngram" => $search_keyword]],
                                     ["match" => ["value" => $search_keyword]]
                                 ],
-                                "filter" => [
-                                    'bool' => [
-                                        'must' => [
-                                            ["terms" => ["module_srl" => $module_srl]],
-                                            ["term" => ["var_idx" => $varIdx]]
-                                        ]
-                                    ]
-                                ],
                                 "minimum_should_match" => 1
                             ]
                         ],
@@ -1748,11 +1226,8 @@ class elasticsearchModel extends elasticsearch
                         "_source" => false,
                     ]
                 ];
-                if($category_srl) {
-                    $params['body']['query']['bool']['filter'][] = ["match" => ["doc_category_srl" => $category_srl]];
-                }
+                $this->_setParamFilter($params, $obj, $filterMust);
                 break;
-
         }
 
         if($params) {
@@ -1799,6 +1274,33 @@ class elasticsearchModel extends elasticsearch
             $obj->sort_index = "regdate";
             $obj->list_order = "desc";
         }
+
+        $oDocumentModel = getModel('document');
+        $use_division = false;
+        $query_id = '';
+        $args = new stdClass();
+        $oDocumentModel->_setSearchOption($obj, $args, $query_id, $use_division);
+
+
+        $page = $args->page;
+        $list_count = $args->list_count;
+        $page_count = $args->page_count;
+        $category_srl = isset($args->category_srl) && $args->category_srl ? explode(',', $args->category_srl) : array();
+        $module_srl = isset($args->module_srl) && $args->module_srl ? explode(',', $args->module_srl) : array();
+        $exclude_module_srl = isset($args->exclude_module_srl) && $args->exclude_module_srl ? explode(',', $args->exclude_module_srl) : array();
+        $statusList = isset($args->statusList) && $args->statusList ? $args->statusList : array();
+        $member_srl = isset($args->member_srl) && $args->member_srl ? $args->member_srl : null;
+        $obj->page = $page;
+        $obj->page_count = $page_count;
+        $obj->list_count = $list_count;
+        $obj->category_srl = $category_srl;
+        $obj->module_srl = $module_srl;
+        $obj->exclude_module_srl = $exclude_module_srl;
+        $obj->statusList = $statusList;
+        $obj->member_srl = $member_srl;
+
+        Context::set('division', null);
+        Context::set('last_division', null);
 
         return $this->getDocumentFromSearch($obj, $columnList);
     }
@@ -2037,6 +1539,7 @@ class elasticsearchModel extends elasticsearch
         $page = $obj->page;
         $list_count = $obj->list_count;
         $page_count = $obj->page_count;
+        $total_page = max(1, ceil($total_count / $list_count));
         $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
         $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
         $search_after = null;
@@ -2044,54 +1547,53 @@ class elasticsearchModel extends elasticsearch
             $page = 1;
         }
 
-        $search_after = $page > 1 ? $this->getIntegrationSearchAfterOffset($obj, $params, $total_count) : null;
-        $_params = [
-            'index' => $params['index'],
-            'body' => [
-                "size" => $list_count,
-                'query' => $params['body']['query'],
-                'sort' => $params['body']['sort'],
-                "_source" => false,
-            ]
-        ];
-        if(isset($params['body']['fields']) && count($params['body']['fields'])) {
-            $_params['body']['fields'] = $params['body']['fields'];
-        }
-        if($search_after) {
-            $_params['body']['query']['bool']['filter']['bool']['must'][] = ["range" =>
-                [$sort_index =>
-                    [($order_type === "asc" ? "gt" : "lt") => $search_after]
+        $ids = array();
+        $data = array();
+        if($page <= $total_page) {
+            $search_after = $page > 1 ? $this->getIntegrationSearchAfterOffset($obj, $params, $total_count) : null;
+            $_params = [
+                'index' => $params['index'],
+                'body' => [
+                    "size" => $list_count,
+                    'query' => $params['body']['query'],
+                    'sort' => $params['body']['sort'],
+                    "_source" => false,
                 ]
             ];
-        }
-        try {
-            $response = $client->search($_params);
-            $hits = $response['hits'];
-            $hitsData = $hits['hits'];
-            $total_page = max(1, ceil($total_count / $list_count));
-            $ids = array();
-            $data = array();
-            foreach($hitsData as $each) {
-                $id = (int)$each['_id'];
-                $ids[] = $id;
-                $data[$id] = $each['fields'];
+            if(isset($params['body']['fields']) && count($params['body']['fields'])) {
+                $_params['body']['fields'] = $params['body']['fields'];
             }
-
-            $page_navigation = new PageHandler($total_count, $total_page, $page, $page_count);
-            $output = new BaseObject();
-            $output->total_count = $total_count;
-            $output->total_page = $total_page;
-            $output->page = $page;
-            $output->ids = $ids;
-            $output->data = $data;
-            $output->page_navigation = $page_navigation;
-
-            return $output;
-        } catch(Exception $e) {
-            $oElasticsearchController->insertErrorLog('search', $_params, $e);
-            $_result = null;
+            if($search_after) {
+                $_params['body']['query']['bool']['filter']['bool']['must'][] = ["range" =>
+                    [$sort_index =>
+                        [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                    ]
+                ];
+            }
+            try {
+                $response = $client->search($_params);
+                $hits = $response['hits'];
+                $hitsData = $hits['hits'];
+                foreach($hitsData as $each) {
+                    $id = (int)$each['_id'];
+                    $ids[] = $id;
+                    $data[$id] = $each['fields'];
+                }
+            } catch(Exception $e) {
+                $oElasticsearchController->insertErrorLog('search', $_params, $e);
+            }
         }
 
+        $page_navigation = new PageHandler($total_count, $total_page, $page, $page_count);
+        $output = new BaseObject();
+        $output->total_count = $total_count;
+        $output->total_page = $total_page;
+        $output->page = $page;
+        $output->ids = $ids;
+        $output->data = $data;
+        $output->page_navigation = $page_navigation;
+
+        return $output;
     }
 
     function getIntegrationSearchData($obj, array $columnList = array()) {
@@ -2185,7 +1687,8 @@ class elasticsearchModel extends elasticsearch
                                 "filter" => [
                                     "bool" => [
                                         "must" => [
-                                            ["match" => ["is_secret" => "N"]]
+                                            ["term" => ["is_secret" => "N"]],
+                                            ["term" => ["doc_status" => "PUBLIC"]]
                                         ]
                                     ]
                                 ]
@@ -2231,10 +1734,10 @@ class elasticsearchModel extends elasticsearch
                                 "filter" => [
                                     "bool" => [
                                         "must" => [
-                                            ["match" => ["isvalid" => "Y"]],
-                                            ["match" => ["direct_download" => $direct_download]],
-                                            ["match" => ["doc_status" => "PUBLIC"]],
-                                            ["match" => ["cmt_is_secret" => "N"]]
+                                            ["term" => ["isvalid" => "Y"]],
+                                            ["term" => ["direct_download" => $direct_download]],
+                                            ["term" => ["doc_status" => "PUBLIC"]],
+                                            ["term" => ["cmt_is_secret" => "N"]]
                                         ]
                                     ]
                                 ],
@@ -2560,6 +2063,138 @@ class elasticsearchModel extends elasticsearch
         }
 
         return $nextOffset;
+    }
+
+    function _setParamFilter(&$params, &$obj, array &$filterMust) {
+        if(!$params || !$obj) {
+            return;
+        }
+
+        $prefix = self::getElasticEnginePrefix();
+        if($prefix) {
+            $prefix .= "_";
+        }
+        $module_srl = $obj->module_srl;
+        $exclude_module_srl = $obj->exclude_module_srl;
+        $category_srl = $obj->category_srl;
+        $search_target = $obj->search_target;
+        $statusList = $obj->statusList;
+        $member_srl = $obj->member_srl;
+        $_searchTarget = $search_target;
+        $varIdx = -1;
+        if(strpos($_searchTarget, "extra_vars") !== false) {
+            $str = explode("extra_vars", $_searchTarget);
+            $varIdx = (int)$str[1];
+            if(!$varIdx) {
+                return null;
+            }
+            $_searchTarget = "extra_vars";
+        }
+
+        switch($_searchTarget) {
+            case "title_content":
+            case "title":
+            case "content":
+                if(!empty($exclude_module_srl)) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
+                if(!empty($category_srl)) {
+                    $filterMust[] = ["terms" => ["category_srl" => $category_srl]];
+                }
+                if(!empty($module_srl)) {
+                    $filterMust[] = ["terms" => ["module_srl" => $module_srl]];
+                }
+                if(!empty($statusList)) {
+                    $filterMust[] = ["terms" => ["status" => $statusList]];
+                }
+                if($member_srl) {
+                    $filterMust[] = ["term" => ["member_srl" => $member_srl]];
+                }
+                if(count($filterMust) > 0) {
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filterMust;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filterMust;
+                    }
+                }
+                break;
+
+            case "comment":
+                if(!empty($exclude_module_srl)) {
+                    $params['body']['query']['bool']['filter'] = [
+                        "bool" => [
+                            "must_not" => [
+                                "terms" => [
+                                    "module_srl" => $exclude_module_srl
+                                ]
+                            ]
+                        ]
+                    ];
+                }
+                if(!empty($category_srl)) {
+                    $filterMust[] = ["terms" => ["doc_category_srl" => $category_srl]];
+                }
+                if(!empty($module_srl)) {
+                    $filterMust[] = ["terms" => ["module_srl" => $module_srl]];
+                }
+                if(!empty($statusList)) {
+                    $filterMust[] = ["terms" => ["doc_status" => $statusList]];
+                }
+                if($member_srl) {
+                    $filterMust[] = ["term" => ["doc_member_srl" => $member_srl]];
+                }
+                if(count($filterMust) > 0) {
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filterMust;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filterMust;
+                    }
+                }
+                break;
+
+            case "extra_vars":
+                if(!empty($exclude_module_srl)) {
+                    $params['body']['query']['bool']['filter']['bool'] = [
+                        "must_not" => [
+                            "terms" => [
+                                "module_srl" => $exclude_module_srl
+                            ]
+                        ]
+                    ];
+                }
+                if(!empty($category_srl)) {
+                    $filterMust[] = ["terms" => ["doc_category_srl" => $category_srl]];
+                }
+                if(!empty($module_srl)) {
+                    $filterMust[]  = ["terms" => ["module_srl" => $module_srl]];
+                }
+                if(!empty($statusList)) {
+                    $filterMust[]  = ["terms" => ["doc_status" => $statusList]];
+                }
+                if($varIdx) {
+                    $filterMust[]  = ["term" => ["var_idx" => $varIdx]];
+                }
+                if($member_srl) {
+                    $filterMust[]  = ["term" => ["doc_member_srl" => $member_srl]];
+                }
+                if(count($filterMust) > 0) {
+                    if(isset($params['body']['query']['bool']['filter']) && isset($params['body']['query']['bool']['filter']['bool'])) {
+                        $params['body']['query']['bool']['filter']['bool']['must'] = $filterMust;
+                    } else {
+                        $params['body']['query']['bool']['filter'] = $filterMust;
+                    }
+                }
+                break;
+        }
+
     }
 
 }
