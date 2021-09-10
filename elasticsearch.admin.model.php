@@ -10,8 +10,9 @@ use Elasticsearch\ClientBuilder;
 class ElasticSearchInstall {
 
     private $indexSettings = [
-        "number_of_replicas" => 1,
-        "number_of_shards" => 5,
+        "number_of_replicas" => 0,
+        "number_of_shards" => 4,
+        "refresh_interval" => "1s",
         "index" => [
             "analysis" => [
                 "analyzer" => [
@@ -30,11 +31,6 @@ class ElasticSearchInstall {
                     ]
                 ],
                 "filter" => [
-                    "my_shingle" => [
-                        "type" => "shingle",
-                        "token_separator" => "",
-                        "max_shingle_size" => 3
-                    ],
                     "my_ngram" => [
                         "type" => "nGram",
                         "min_gram" => 1,
@@ -352,7 +348,7 @@ class ElasticSearchBaseImporter {
 
 class ElasticSearchDocumentImporter extends ElasticSearchBaseImporter {
 
-    function import($documentStartOffset = -1, $documentEndOffset = -1, $chunkSize = 1000,  $loop = true) {
+    function import($documentStartOffset = -1, $documentEndOffset = -1, $chunkSize = 2000,  $loop = true) {
         $oElasticsearchModel = getModel('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
         $prefix = $oElasticsearchModel::getElasticEnginePrefix();
@@ -428,7 +424,7 @@ class ElasticSearchDocumentImporter extends ElasticSearchBaseImporter {
 }
 
 class ElasticSearchCommentImporter extends ElasticSearchBaseImporter {
-    function import($commentStartOffset = -1, $commentEndOffset = -1, $chunkSize = 1000, $loop = true) {
+    function import($commentStartOffset = -1, $commentEndOffset = -1, $chunkSize = 3000, $loop = true) {
         $oElasticsearchModel = getModel('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
         $prefix = $oElasticsearchModel::getElasticEnginePrefix();
@@ -504,7 +500,7 @@ class ElasticSearchCommentImporter extends ElasticSearchBaseImporter {
 }
 
 class ElasticSearchFileImporter extends ElasticSearchBaseImporter {
-    function import($startFileOffset = -1, $endFileOffset = -1, $chunkCount = 1000, $loop = true) {
+    function import($startFileOffset = -1, $endFileOffset = -1, $chunkCount = 3000, $loop = true) {
         $oElasticsearchModel = getModel('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
         $prefix = $oElasticsearchModel::getElasticEnginePrefix();
@@ -611,7 +607,7 @@ class ElasticSearchFileImporter extends ElasticSearchBaseImporter {
 }
 
 class ElasticSearchDocumentExtraVarsImporter extends ElasticSearchBaseImporter {
-    function import($startDocumentOffset = -1, $startVarIndexOffset = -1, $endDocumentOffset = -1, $chunkCount = 1000, $loop = true) {
+    function import($startDocumentOffset = -1, $startVarIndexOffset = -1, $endDocumentOffset = -1, $chunkCount = 3000, $loop = true) {
         $oElasticsearchModel = getModel('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
         $prefix = $oElasticsearchModel::getElasticEnginePrefix();

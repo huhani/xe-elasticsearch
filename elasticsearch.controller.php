@@ -274,11 +274,11 @@ class elasticsearchController extends elasticsearch
         $member_srl = isset($obj->member_srl) ? $obj->member_srl : 0;
         $client = $oElasticsearchModel::getElasticEngineClient();
         $prefix = $oElasticsearchModel::getElasticEnginePrefix();
-        $user_id = "";
+        $user_id = isset($obj->user_id) ? $obj->user_id : "";
         if($prefix) {
             $prefix .= "_";
         }
-        if($member_srl > 0) {
+        if($member_srl > 0 && !$user_id) {
             $oMemberInfo = $oMemberModel->getMemberInfoByMemberSrl($member_srl);
             if($oMemberInfo) {
                 $user_id = $oMemberInfo->user_id;
@@ -706,6 +706,33 @@ class elasticsearchController extends elasticsearch
 
         $index = $prefix.'files';
         $this->deleteIndexDocument($index, $file_srl);
+    }
+
+    function setIndexRefreshInterval($indexName, $refresh_interval = 1) {
+        $oElasticsearchModel = getModel('elasticsearch');
+        $client = $oElasticsearchModel::getElasticEngineClient();
+        $interval = $refresh_interval < 0 ? -1 : ($refresh_interval."s");
+        if($refresh_interval == 0) {
+            $interval = null;
+        }
+        $params = [
+            'index' => $indexName,
+            'body' => [
+                'settings' => [
+                    'refresh_interval' => $interval
+                ]
+            ]
+        ];
+
+        try {
+            $response = $client->indices()->putSettings($params);
+
+            return $response;
+        } catch(Exception $e) {
+            $this->insertErrorLog('putSettings', $params, $e);
+        }
+
+        return null;
     }
 
     function setFileValid($upload_target_srl, $isvalid = "Y", $document_srl = null, $comment_srl = null, $is_secret = "N", $doc_status = "PUBLIC") {

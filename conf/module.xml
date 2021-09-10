@@ -15,6 +15,7 @@
 		        <action name="dispElasticsearchAdminIndexDocumentDetail" type="view" />
 		        <action name="dispElasticsearchAdminErrorLogList" type="view" />
 		        <action name="dispElasticsearchAdminErrorLogDetail" type="view" />
+		        <action name="dispElasticsearchAdminIndexSettingView" type="view" />
 
 		        <action name="procElasticsearchAdminIndexPurge" type="controller" />
 		        <action name="procElasticsearchAdminIndexDelete" type="controller" />
@@ -23,6 +24,7 @@
 		        <action name="procElasticsearchAdminIndexCommentManage" type="controller" />
 		        <action name="procElasticsearchAdminIndexDocumentExtraVarsManage" type="controller" />
 		        <action name="procElasticsearchAdminIndexFileManage" type="controller" />
+		        <action name="procElasticsearchAdminIndexRefreshInterval" type="controller" />
 		        <action name="procElasticsearchAdminModuleSetting" type="controller" />
 		        <action name="procElasticsearchAdminIndexRemapping" type="controller" />
 		        <action name="procElasticsearchAdminErrorLogDelete" type="controller" />

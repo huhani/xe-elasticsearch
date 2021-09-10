@@ -211,6 +211,12 @@ class elasticsearchAdminController extends elasticsearch
         return;
     }
 
+    function procElasticsearchAdminIndexRefreshInterval() {
+        $refreshInterval = (int)Context::get('refresh_interval');
+
+        return $this->setIndicesRefreshInterval($refreshInterval);
+    }
+
     function procElasticsearchAdminModuleSetting() {
         $oElasticsearchModel = getModel('elasticsearch');
         $conf = $oElasticsearchModel->getModuleConfig();
@@ -262,6 +268,32 @@ class elasticsearchAdminController extends elasticsearch
         $output = $oElasticsearchController->deleteErrorLogsAll();
 
         return $output;
+    }
+
+    function setIndicesRefreshInterval($refreshInterval = 1) {
+        $oElasticsearchModel = getModel('elasticsearch');
+        $oElasticsearchController = getController('elasticsearch');
+        $prefix = $oElasticsearchModel::getElasticEnginePrefix();
+        if($prefix) {
+            $prefix .= "_";
+        }
+        $targetIndices = array($prefix."documents", $prefix."comments", $prefix."document_extra_vars", $prefix."files");
+        $hasNotIndices = array_search(false, $oElasticsearchModel->hasIndices($targetIndices));
+        if($hasNotIndices !== false) {
+            return new BaseObject(-1, "인덱스가 올바르게 설정되어있지 않습니다.");
+        }
+        if($refreshInterval < -1 || $refreshInterval > 3600*24) {
+            return new BaseObject(-1, "새로고침 주기 값이 올바르지 않습니다.");
+        }
+
+        foreach($targetIndices as $each) {
+            $output = $oElasticsearchController->setIndexRefreshInterval($each, $refreshInterval);
+            if(!$output) {
+                return new BaseObject(-1, "인덱스 설정 도중 오류가 발생했습니다.");
+            }
+        }
+
+        return new BaseObject();
     }
 
 }

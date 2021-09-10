@@ -34,7 +34,8 @@
                 <td class="nowr" loop="$list => $key, $val">{is_numeric($val) ? number_format($val) : $val}</td>
                 <td class="nowr">
                     <a class="x_btn" href="{getUrl('act', 'dispElasticsearchAdminIndexState', 'target_index', $list['index'])}">stats</a>
-                    <a class="x_btn" href="{getUrl('act', 'dispElasticsearchAdminIndexMapping', 'target_index', $list['index'])}" cond="substr($list['index'], 0, 1) !== '.'">mapping</a>
+                    <a class="x_btn" href="{getUrl('act', 'dispElasticsearchAdminIndexSettingView', 'target_index', $list['index'])}">settings</a>
+                    <a class="x_btn" href="{getUrl('act', 'dispElasticsearchAdminIndexMapping', 'target_index', $list['index'])}">mapping</a>
                 </td>
                 <td class="nowr">
                     <a class="x_btn" href="{getUrl('act', 'dispElasticsearchAdminIndexSetting', 'target_index', $list['index'])}" cond="substr($list['index'], 0, 1) !== '.'">config</a>

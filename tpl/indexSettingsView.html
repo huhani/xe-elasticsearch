@@ -1,0 +1,17 @@
+<include target="_header.html" />
+
+
+<h2>Settings</h2>
+<div class="x_content">
+
+    <code>
+        {str_replace(array("\\/", "\\\\", "\n", "\t"), array("/", "\\", "<BR>", "&nbsp;&nbsp;&nbsp;"), $index_settings)}
+    </code>
+</div>
+
+
+<div class="x_clearfix btnArea">
+    <div class="x_pull-left">
+        <a href="{getUrl('act', 'dispElasticsearchAdminIndexList', 'target_index', '')}" type="button" class="x_btn">목록</a>
+    </div>
+</div>

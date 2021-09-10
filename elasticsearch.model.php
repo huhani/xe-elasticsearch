@@ -1829,6 +1829,19 @@ class elasticsearchModel extends elasticsearch
         return $hasIndices;
     }
 
+    function getIndexSettings($target_index) {
+        $client = self::getElasticEngineClient();
+        try {
+            $indices = $client->indices()->getSettings(['index' => $target_index]);
+
+            return $indices;
+        } catch(Exception $e) {
+            return null;
+        }
+
+        return null;
+    }
+
     function getIndexDocument($indexName, $id) {
         $client = self::getElasticEngineClient();
         $params = [
@@ -2455,7 +2468,7 @@ class elasticsearchModel extends elasticsearch
 
         return false;
     }
-
+    
     function _getLastItem($params, $diff, $approximatedOffset, $sort_index, $order_type) {
         if(!isset($params['index'])) {
             return null;

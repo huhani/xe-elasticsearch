@@ -81,6 +81,19 @@ class elasticsearchAdminView extends elasticsearch
         $this->setTemplateFile('indexMapping');
     }
 
+    function dispElasticsearchAdminIndexSettingView() {
+        $oElasticsearchModel = getModel('elasticsearch');
+        $targetIndex = Context::get('target_index');
+        if(!$targetIndex || !$oElasticsearchModel->hasIndices([$targetIndex])[0]) {
+            return new BaseObject(-1, "올바르지 않은 인덱스 접근입니다.");
+        }
+
+        $result = $oElasticsearchModel->getIndexSettings($targetIndex);
+        $resultJSON = $result ? $this->prettyPrint(json_encode($result)) : $result;
+        Context::set('index_settings', $resultJSON);
+        $this->setTemplateFile('indexSettingsView');
+    }
+
     function dispElasticsearchAdminIndexSetting() {
         $oElasticsearchModel = getModel('elasticsearch');
         $prefix = $oElasticsearchModel::getElasticEnginePrefix();

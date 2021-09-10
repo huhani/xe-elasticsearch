@@ -6,7 +6,7 @@
 
 <ul class="x_nav x_nav-tabs">
 
-	<li class="x_active"|cond="in_array($act, array('dispElasticsearchAdminIndexList', 'dispElasticsearchAdminIndexState', 'dispElasticsearchAdminIndexMapping', 'dispElasticsearchAdminIndexSetting'))">
+	<li class="x_active"|cond="in_array($act, array('dispElasticsearchAdminIndexList', 'dispElasticsearchAdminIndexState', 'dispElasticsearchAdminIndexMapping', 'dispElasticsearchAdminIndexSetting', 'dispElasticsearchAdminIndexSettingView'))">
 		<a href="{getUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminIndexList')}">인덱스 목록</a>
 	</li>
 	<li class="x_active"|cond="$act == 'dispElasticsearchAdminIndexDocumentList' || $act == 'dispElasticsearchAdminIndexDocumentDetail'">
