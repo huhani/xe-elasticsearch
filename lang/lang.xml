@@ -1,5 +1,8 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <lang>
+	<item name="elasticsearch">
+		<value xml:lang="en"><![CDATA[ElasticSearch]]></value>
+	</item>
 	<item name="integration_search">
 		<value xml:lang="ko"><![CDATA[통합검색]]></value>
 		<value xml:lang="en"><![CDATA[Integrated Search]]></value>
