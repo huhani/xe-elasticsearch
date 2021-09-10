@@ -2095,6 +2095,7 @@ class elasticsearchModel extends elasticsearch
     }
 
     function getIntegrationSearchData($obj, array $columnList = array()) {
+        $oElasticsearchController = getController('elasticsearch');
         $config = $this->getModuleConfig();
         $prefix = self::getElasticEnginePrefix();
         if($prefix) {
@@ -2295,10 +2296,7 @@ class elasticsearchModel extends elasticsearch
 
                 return $output;
             } catch(Exception $e) {
-                var_dump($e);
-                exit();
-                //$oElasticsearchController->insertErrorLog('search', $params, $e);
-                //return null;
+                $oElasticsearchController->insertErrorLog('search', $params, $e);
             }
 
         }
