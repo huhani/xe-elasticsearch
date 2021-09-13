@@ -1,5 +1,5 @@
 <?php
-/*! Copyright (C) 201 BGM STORAGE. All rights reserved. */
+/*! Copyright (C) 2021 BGM STORAGE. All rights reserved. */
 /**
  * @class  elasticSearchModel
  * @author Huhani (mmia268@gmail.com)
@@ -212,6 +212,52 @@ class elasticsearchModel extends elasticsearch
 
                 return false;
 
+            case "nick_name":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["nick_name.my_edge_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+                $this->_setParamFilter($params, $obj, $filterMust);
+                try {
+                    $result = $client->count($params);
+                    return $result['count'];
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('count', $params, $e);
+                }
+
+                return false;
+
+            case "tags":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["tags_string" => $search_keyword]]
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+                $this->_setParamFilter($params, $obj, $filterMust);
+                try {
+                    $result = $client->count($params);
+                    return $result['count'];
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('count', $params, $e);
+                }
+
+                return false;
+
             case "comment":
                 $params = [
                     'index' => $prefix.'comments',
@@ -245,11 +291,9 @@ class elasticsearchModel extends elasticsearch
                     'body' => [
                         'query' => [
                             "bool" => [
-                                "should" => [
-                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]],
-                                    ["match" => ["value" => $search_keyword]]
-                                ],
-                                "minimum_should_match" => 1
+                                "must" => [
+                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]]
+                                ]
                             ]
                         ]
                     ]
@@ -432,6 +476,82 @@ class elasticsearchModel extends elasticsearch
 
                 return $approximatedOffset;
 
+            case "nick_name":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        "size" => 0,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["nick_name.my_edge_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "_source" => false,
+                        "aggs" => [
+                            'percentile' => [
+                                'percentiles' => [
+                                    "field" => $sort_index,
+                                    "percents" => $percent,
+                                    "tdigest" => ["compression" => $compression]
+                                ]
+                            ]
+                        ]
+
+                    ]
+                ];
+                $this->_setParamFilter($params, $obj, $filterMust);
+                try {
+                    $result = $client->search($params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $params, $e);
+                    return false;
+                }
+                $aggregations = $result['aggregations'];
+                $percentile = $aggregations['percentile'];
+                $approximatedOffset = end($percentile['values']);
+
+                return $approximatedOffset;
+
+            case "tags":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        "size" => 0,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["tags_string" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "_source" => false,
+                        "aggs" => [
+                            'percentile' => [
+                                'percentiles' => [
+                                    "field" => $sort_index,
+                                    "percents" => $percent,
+                                    "tdigest" => ["compression" => $compression]
+                                ]
+                            ]
+                        ]
+
+                    ]
+                ];
+                $this->_setParamFilter($params, $obj, $filterMust);
+                try {
+                    $result = $client->search($params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('search', $params, $e);
+                    return false;
+                }
+                $aggregations = $result['aggregations'];
+                $percentile = $aggregations['percentile'];
+                $approximatedOffset = end($percentile['values']);
+
+                return $approximatedOffset;
+
             case "extra_vars":
                 $params = [
                     'index' => $prefix.'document_extra_vars',
@@ -439,13 +559,12 @@ class elasticsearchModel extends elasticsearch
                         "size" => 0,
                         'query' => [
                             "bool" => [
-                                "should" => [
-                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]],
-                                    ["match" => ["value" => $search_keyword]]
-                                ],
-                                "minimum_should_match" => 1
+                                "must" => [
+                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]]
+                                ]
                             ]
                         ],
+                        "_source" => false,
                         "aggs" => [
                             'percentile' => [
                                 'percentiles' => [
@@ -455,7 +574,6 @@ class elasticsearchModel extends elasticsearch
                                 ]
                             ]
                         ]
-
                     ]
                 ];
                 $this->_setParamFilter($params, $obj, $filterMust);
@@ -674,19 +792,115 @@ class elasticsearchModel extends elasticsearch
 
                 return $this->_getLastItem($params2, $diff, $approximatedOffset, $sort_index, $order_type);
 
+            case "nick_name":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["nick_name.my_edge_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+                $filterMust[] = ["range" => [$sort_index => [
+                    ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
+                ]]];
+                $this->_setParamFilter($params, $obj, $filterMust);
+                try {
+                    $result = $client->count($params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('count', $params, $e);
+                    return false;
+                }
+                $count = $result['count'];
+                $diff = (int)($from-$count);
+                if($diff === 0) {
+                    return $approximatedOffset;
+                }
+
+                $params2 = [
+                    'index' => $prefix.'documents',
+                    'size' => abs($diff) + ($diff < 0 ? 1 : 0),
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["nick_name.my_edge_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "fields" => [$sort_index],
+                        "_source" => false
+                    ]
+                ];
+                $filterMust = array();
+                $this->_setParamFilter($params2, $obj, $filterMust);
+
+                return $this->_getLastItem($params2, $diff, $approximatedOffset, $sort_index, $order_type);
+
+            case "tags":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["tags_string" => $search_keyword]]
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+                $filterMust[] = ["range" => [$sort_index => [
+                    ($order_type === "asc" ? "lte" : "gte") => $approximatedOffset
+                ]]];
+                $this->_setParamFilter($params, $obj, $filterMust);
+                try {
+                    $result = $client->count($params);
+                } catch(Exception $e) {
+                    $oElasticsearchController->insertErrorLog('count', $params, $e);
+                    return false;
+                }
+                $count = $result['count'];
+                $diff = (int)($from-$count);
+                if($diff === 0) {
+                    return $approximatedOffset;
+                }
+
+                $params2 = [
+                    'index' => $prefix.'documents',
+                    'size' => abs($diff) + ($diff < 0 ? 1 : 0),
+                    'body' => [
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["tags_string" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "fields" => [$sort_index],
+                        "_source" => false
+                    ]
+                ];
+                $filterMust = array();
+                $this->_setParamFilter($params2, $obj, $filterMust);
+
+                return $this->_getLastItem($params2, $diff, $approximatedOffset, $sort_index, $order_type);
+
             case "extra_vars":
                 $params = [
                     'index' => $prefix.'document_extra_vars',
                     'body' => [
                         'query' => [
                             "bool" => [
-                                "should" => [
-                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]],
-                                    ["match" => ["value" => $search_keyword]]
-                                ],
-                                "minimum_should_match" => 1
+                                "must" => [
+                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]]
+                                ]
                             ]
-                        ]
+                        ],
                     ]
                 ];
                 $filterMust[] = ["range" => ["doc_".$sort_index => [
@@ -712,11 +926,9 @@ class elasticsearchModel extends elasticsearch
                     'body' => [
                         'query' => [
                             "bool" => [
-                                "should" => [
-                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]],
-                                    ["match" => ["value" => $search_keyword]]
-                                ],
-                                "minimum_should_match" => 1
+                                "must" => [
+                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]]
+                                ]
                             ]
                         ],
                         "fields" => ["doc_".$sort_index],
@@ -733,10 +945,24 @@ class elasticsearchModel extends elasticsearch
     }
 
     function getDocumentFromSearchFromSearchAfter($obj, $columnList) {
+        $search_target = $obj->search_target;
+        $_searchTarget = $search_target;
+        $varIdx = -1;
+        if(strpos($_searchTarget, "extra_vars") !== false) {
+            $str = explode("extra_vars", $_searchTarget);
+            $varIdx = (int)$str[1];
+            if(!$varIdx) {
+                return null;
+            }
+            $_searchTarget = "extra_vars";
+        }
+        if(!in_array($_searchTarget, array('title_content', 'title', 'content', "nick_name", "tags", 'comment', 'extra_vars'))) {
+            return null;
+        }
+
         $chunkSize = 10000;
         $oElasticsearchController = getController('elasticsearch');
         $total_count = $this->getIndexDocumentSearchCount($obj);
-
         $prefix = self::getElasticEnginePrefix();
         $client = self::getElasticEngineClient();
         $isExtraVars = $obj->isExtraVars;
@@ -745,7 +971,6 @@ class elasticsearchModel extends elasticsearch
         $page_count = $obj->page_count;
         $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
         $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
-        $search_target = $obj->search_target;
         $search_keyword = $obj->search_keyword;
         $total_page = max(1, ceil($total_count / $list_count));
         $fromPage = max(0, $page-1);
@@ -758,17 +983,6 @@ class elasticsearchModel extends elasticsearch
         }
         if(!$page) {
             $page = 1;
-        }
-
-        $_searchTarget = $search_target;
-        $varIdx = -1;
-        if(strpos($_searchTarget, "extra_vars") !== false) {
-            $str = explode("extra_vars", $_searchTarget);
-            $varIdx = (int)$str[1];
-            if(!$varIdx) {
-                return null;
-            }
-            $_searchTarget = "extra_vars";
         }
 
         $_result = null;
@@ -893,6 +1107,78 @@ class elasticsearchModel extends elasticsearch
                     }
                     break;
 
+                case "nick_name":
+                    $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
+                    $_params = [
+                        'index' => $prefix.'documents',
+                        'body' => [
+                            "size" => $list_count,
+                            'query' => [
+                                "bool" => [
+                                    "must" => [
+                                        ["match_phrase" => ["nick_name.my_edge_ngram" => $search_keyword]]
+                                    ]
+                                ]
+                            ],
+                            "fields" => ["document_srl"],
+                            'sort' => [
+                                $sort_index => $order_type
+                            ],
+                            "_source" => false,
+                        ]
+                    ];
+                    if($search_after) {
+                        $filterMust[] = ["range" =>
+                            [$sort_index =>
+                                [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                            ]
+                        ];
+                    }
+                    $this->_setParamFilter($_params, $obj, $filterMust);
+                    try {
+                        $_result = $client->search($_params);
+                    } catch(Exception $e) {
+                        $oElasticsearchController->insertErrorLog('search', $_params, $e);
+                        $_result = null;
+                    }
+                    break;
+
+                case "tags":
+                    $search_after = $page > 1 ? $this->getIndexAfterOffset($obj, $total_count) : null;
+                    $_params = [
+                        'index' => $prefix.'documents',
+                        'body' => [
+                            "size" => $list_count,
+                            'query' => [
+                                "bool" => [
+                                    "must" => [
+                                        ["match_phrase" => ["tags_string" => $search_keyword]]
+                                    ]
+                                ]
+                            ],
+                            "fields" => ["document_srl"],
+                            'sort' => [
+                                $sort_index => $order_type
+                            ],
+                            "_source" => false,
+                        ]
+                    ];
+                    if($search_after) {
+                        $filterMust[] = ["range" =>
+                            [$sort_index =>
+                                [($order_type === "asc" ? "gt" : "lt") => $search_after]
+                            ]
+                        ];
+                    }
+                    $this->_setParamFilter($_params, $obj, $filterMust);
+                    try {
+                        $_result = $client->search($_params);
+                    } catch(Exception $e) {
+                        $oElasticsearchController->insertErrorLog('search', $_params, $e);
+                        $_result = null;
+                    }
+                    break;
+
                 case "comment":
                     $afterRegdate = null;
                     $afterListOrder = null;
@@ -969,11 +1255,9 @@ class elasticsearchModel extends elasticsearch
                             "size" => $list_count,
                             'query' => [
                                 "bool" => [
-                                    "should" => [
-                                        ["match_phrase" => ["value.my_ngram" => $search_keyword]],
-                                        ["match" => ["value" => $search_keyword]]
-                                    ],
-                                    "minimum_should_match" => 1
+                                    "must" => [
+                                        ["match_phrase" => ["value.my_ngram" => $search_keyword]]
+                                    ]
                                 ]
                             ],
                             "fields" => ["document_srl"],
@@ -1048,7 +1332,24 @@ class elasticsearchModel extends elasticsearch
     }
 
     function getDocumentFromSearch($obj, $columnList) {
+        $search_target = $obj->search_target;
+        $_searchTarget = $search_target;
+        if(strpos($_searchTarget, "extra_vars") !== false) {
+            $str = explode("extra_vars", $_searchTarget);
+            $varIdx = (int)$str[1];
+            if(!$varIdx) {
+                return null;
+            }
+            $_searchTarget = "extra_vars";
+        }
+
         $config = $this->getModuleConfig();
+        if(!in_array($_searchTarget, $config->search_target_list)) {
+            return null;
+        }
+
+        Context::set('division', null);
+        Context::set('last_division', null);
         if($config->use_search_after === "Y") {
             return $this->getDocumentFromSearchFromSearchAfter($obj, $columnList);
         }
@@ -1059,7 +1360,6 @@ class elasticsearchModel extends elasticsearch
         $page_count = $obj->page_count;
         $sort_index = isset($obj->sort_index) ? $obj->sort_index : "regdate";
         $order_type = (!isset($obj->order_type) && $sort_index === "list_order") || $obj->order_type === "asc" ? "asc" : "desc";
-        $search_target = $obj->search_target;
         $search_keyword = $obj->search_keyword;
         $params = null;
         if($prefix) {
@@ -1074,17 +1374,7 @@ class elasticsearchModel extends elasticsearch
             $newColumnList[] = explode(".", $each)[1];
         }
 
-        $_searchTarget = $search_target;
-        $varIdx = -1;
         $filterMust = array();
-        if(strpos($_searchTarget, "extra_vars") !== false) {
-            $str = explode("extra_vars", $_searchTarget);
-            $varIdx = (int)$str[1];
-            if(!$varIdx) {
-                return null;
-            }
-            $_searchTarget = "extra_vars";
-        }
         switch ($_searchTarget) {
             case "title_content" :
                 $params = [
@@ -1161,6 +1451,52 @@ class elasticsearchModel extends elasticsearch
                 $this->_setParamFilter($params, $obj, $filterMust);
                 break;
 
+            case "nick_name":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        "from" => max($page-1, 0) * $list_count,
+                        "size" => $list_count,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["nick_name.my_edge_ngram" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "fields" => ["document_srl"],
+                        'sort' => [
+                            $sort_index => $order_type
+                        ],
+                        "_source" => false,
+                    ]
+                ];
+                $this->_setParamFilter($params, $obj, $filterMust);
+                break;
+
+            case "tags":
+                $params = [
+                    'index' => $prefix.'documents',
+                    'body' => [
+                        "from" => max($page-1, 0) * $list_count,
+                        "size" => $list_count,
+                        'query' => [
+                            "bool" => [
+                                "must" => [
+                                    ["match_phrase" => ["tags_string" => $search_keyword]]
+                                ]
+                            ]
+                        ],
+                        "fields" => ["document_srl"],
+                        'sort' => [
+                            $sort_index => $order_type
+                        ],
+                        "_source" => false,
+                    ]
+                ];
+                $this->_setParamFilter($params, $obj, $filterMust);
+                break;
+
             case "comment":
                 $params = [
                     'index' => $prefix.'comments',
@@ -1212,11 +1548,9 @@ class elasticsearchModel extends elasticsearch
                         "size" => $list_count,
                         'query' => [
                             "bool" => [
-                                "should" => [
-                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]],
-                                    ["match" => ["value" => $search_keyword]]
-                                ],
-                                "minimum_should_match" => 1
+                                "must" => [
+                                    ["match_phrase" => ["value.my_ngram" => $search_keyword]]
+                                ]
                             ]
                         ],
                         "fields" => ["document_srl"],
@@ -1298,9 +1632,6 @@ class elasticsearchModel extends elasticsearch
         $obj->exclude_module_srl = $exclude_module_srl;
         $obj->statusList = $statusList;
         $obj->member_srl = $member_srl;
-
-        Context::set('division', null);
-        Context::set('last_division', null);
 
         return $this->getDocumentFromSearch($obj, $columnList);
     }
@@ -1388,6 +1719,7 @@ class elasticsearchModel extends elasticsearch
         $config = new stdClass();
         $config->use_alternate_search = "Y";
         $config->use_search_after = "N";
+        $config->search_target_list = array("title_content", "title", "content", "nick_name", "comment", "tags", "extra_vars");
         $config->skin = "default";
         $config->search_module_target = "include";
         $config->search_target_module_srl = "";
@@ -1398,8 +1730,16 @@ class elasticsearchModel extends elasticsearch
     function getModuleConfig() {
         $oModuleModel = getModel('module');
         $config = $oModuleModel->getModuleConfig('elasticsearch');
+        $default = $this->getModuleDefaultConfig();
         if(!$config) {
-            $config = $this->getModuleDefaultConfig();
+            $config = $default;
+        } else {
+            $keys = get_object_vars($default);
+            foreach($keys as $key=>$val) {
+                if(!isset($config->{$key})) {
+                    $config->{$key} = $val;
+                }
+            }
         }
 
         return $config;
@@ -2095,6 +2435,8 @@ class elasticsearchModel extends elasticsearch
             case "title_content":
             case "title":
             case "content":
+            case "nick_name":
+            case "tags":
                 if(!empty($exclude_module_srl)) {
                     $params['body']['query']['bool']['filter'] = [
                         "bool" => [

@@ -285,6 +285,9 @@ class elasticsearchController extends elasticsearch
             }
         }
 
+        $tag_list = isset($obj->tags) && $obj->tags ? explode(',', $obj->tags) : array();
+        $tag_list = array_unique($tag_list);
+
         $docData = array();
         $docData['module_srl'] = $obj->module_srl;
         $docData['document_srl'] = $obj->document_srl;
@@ -296,7 +299,8 @@ class elasticsearchController extends elasticsearch
         $docData['nick_name'] = $obj->nick_name;
         $docData['member_srl'] = isset($obj->member_srl) ? $obj->member_srl : 0;
         $docData['email_address'] = isset($obj->email_address) ? $obj->email_address : "";
-        $docData['tags'] = isset($obj->tags) ? $obj->tags : null;
+        $docData['tags'] = $tag_list;
+        $docData['tags_string'] = isset($obj->tags) ? $obj->tags : null;
         $docData['regdate'] = isset($obj->regdate) ? $obj->regdate : date("YmdHis");
         $docData['ipaddress'] = isset($obj->ipaddress) ? $obj->ipaddress : $_SERVER['REMOTE_ADDR'];
         $docData['list_order'] = isset($obj->list_order) ? $obj->list_order : (-1 * $obj->document_srl);

@@ -223,11 +223,21 @@ class elasticsearchAdminController extends elasticsearch
         $oModuleController = getController('module');
         $vars = Context::getRequestVars();
         $config = new stdClass();
+        $new_search_target_list = array();
+        if(isset($vars->search_target_list) && is_array($vars->search_target_list)) {
+            foreach($vars->search_target_list as $each) {
+                if(in_array($each, array("title_content", "title", "content", "nick_name", "comment", "tags", "extra_vars")) && !in_array($each, $new_search_target_list)) {
+                    $new_search_target_list[] = $each;
+                }
+            }
+        }
+        
         $config->use_alternate_search = $vars->use_alternate_search === "Y" ? "Y" : "N";
         $config->use_search_after = $vars->use_search_after === "Y" ? "Y" : "N";
 
         $config->search_target_module_srl = Context::get('search_target_module_srl');
         if(!$config->search_target_module_srl) $config->search_target_module_srl = '';
+        $config->search_target_list = $new_search_target_list;
         $config->skin = Context::get('skin');
         $config->search_module_target = Context::get('search_module_target');
         $config->skin_vars = $conf->skin_vars;

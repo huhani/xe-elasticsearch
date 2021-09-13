@@ -25,10 +25,17 @@
     <tbody>
     <tr loop="$result['_source'] => $key,$val">
         <th scope="col" class="nowr">{$key}</th>
-        <td>{$val}</td>
+        <td>
+            <!--@if(is_array($val))-->
+            <code>{json_encode($val)}</code>
+            <!--@else-->
+            {$val}
+            <!--@end-->
+        </td>
     </tr>
     </tbody>
 </table>
+
 <!--@end-->
 
 

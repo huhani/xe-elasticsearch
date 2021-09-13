@@ -19,6 +19,42 @@
                 </div>
             </div>
             <div class="x_control-group">
+                <label class="x_control-label">게시판 검색대상</label>
+                <div class="x_controls" style="padding-top:3px">
+                    <label class="x_inline checked" for="search_target__title_content">
+                        <input type="checkbox" name="search_target_list[]" id="search_target__title_content" value="title_content" checked="checked"|cond="array_search('title_content', $moduleConfig->search_target_list) !== false" />
+                        제목+내용
+                    </label>
+                    <label class="x_inline checked" for="search_target__title">
+                        <input type="checkbox" name="search_target_list[]" id="search_target__title" value="title" checked="checked"|cond="array_search('title', $moduleConfig->search_target_list) !== false" />
+                        제목
+                    </label>
+                    <label class="x_inline checked" for="search_target__content">
+                        <input type="checkbox" name="search_target_list[]" id="search_target__content" value="content" checked="checked"|cond="array_search('content', $moduleConfig->search_target_list) !== false" />
+                        내용
+                    </label>
+                    <label class="x_inline checked" for="search_target__nick_name">
+                        <input type="checkbox" name="search_target_list[]" id="search_target__nick_name" value="nick_name" checked="checked"|cond="array_search('nick_name', $moduleConfig->search_target_list) !== false" />
+                        닉네임
+                    </label>
+                    <label class="x_inline checked" for="search_target__comment">
+                        <input type="checkbox" name="search_target_list[]" id="search_target__comment" value="comment" checked="checked"|cond="array_search('comment', $moduleConfig->search_target_list) !== false" />
+                        댓글
+                    </label>
+                    <label class="x_inline checked" for="search_target__tags">
+                        <input type="checkbox" name="search_target_list[]" id="search_target__tags" value="tags" checked="checked"|cond="array_search('tags', $moduleConfig->search_target_list) !== false" />
+                        태그
+                    </label>
+                    <label class="x_inline checked" for="search_target__extra_vars">
+                        <input type="checkbox" name="search_target_list[]" id="search_target__extra_vars" value="extra_vars" checked="checked"|cond="array_search('extra_vars', $moduleConfig->search_target_list) !== false" />
+                        확장변수
+                    </label>
+                    <BR>
+                        게시판 모듈에서 게시글 검색시 엘라스틱서치와 연동할 검색 대상을 지정합니다. 지정하지 않은 항목은 기존 RDBMS검색으로 처리됩니다.
+
+                </div>
+            </div>
+            <div class="x_control-group">
                 <label class="x_control-label">Search After 사용</label>
                 <div class="x_controls" style="padding-top:3px">
                     <label class="x_inline checked" for="use_search_after">

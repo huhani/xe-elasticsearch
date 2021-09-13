@@ -14,12 +14,25 @@ class ElasticSearchInstall {
         "number_of_shards" => 4,
         "refresh_interval" => "1s",
         "index" => [
+            "max_ngram_diff" => 1,
             "analysis" => [
+                "normalizer" => [
+                    "my_normalizer" => [
+                        "type" => "custom",
+                        "filter" => ["lowercase", "asciifolding"]
+                    ]
+                ],
                 "analyzer" => [
                     "my_ngram" => [
                         "tokenizer" => "my_t_ngram",
                         "filter" => ["lowercase", "asciifolding"],
                         //"char_filter" => ["html_strip"]
+                    ],
+                    "my_edge_ngram" => [
+                        "tokenizer" => "my_t_edge_ngram",
+                    ],
+                    "my_ngram_keyword" => [
+                        "tokenizer" => "my_t_ngram_keyword"
                     ]
                 ],
                 "tokenizer" => [
@@ -28,15 +41,18 @@ class ElasticSearchInstall {
                         "min_gram" => 1,
                         "max_gram" => 2,
                         "token_chars"=> ['letter', 'digit']
-                    ]
-                ],
-                "filter" => [
-                    "my_ngram" => [
-                        "type" => "nGram",
-                        "min_gram" => 1,
-                        "max_gram" => 2,
-                        "token_chars"=> ['letter', 'digit']
                     ],
+                    "my_t_ngram_keyword" => [
+                        "type" => "ngram",
+                        "min_gram" => 1,
+                        "max_gram" => 2
+                    ],
+                    "my_t_edge_ngram" => [
+                        "type"=> "edge_ngram",
+                        "min_gram" => 1,
+                        "max_gram" => 80,
+                        "side"=> "front"
+                    ]
                 ]
             ]
         ]];
@@ -66,18 +82,25 @@ class ElasticSearchInstall {
                 ]],
             "user_id" => ["type" => "keyword"],
             "user_name" => ["type" => "keyword"],
-            "nick_name" => ["type" => "keyword"],
-            "member_srl" => ["type" => "long"],
-            "email_address" => ["type" => "keyword"],
-            "tags" => ["type" => "text",
-                "analyzer" => "standard",
+            "nick_name" => ["type" => "keyword",
                 "fields" => [
-                    "my_ngram" => [
+                    "my_edge_ngram" => [
                         "type" => "text",
-                        "analyzer" => "my_ngram",
-                        "search_analyzer" => "my_ngram"
+                        "analyzer" => "my_edge_ngram",
+                        "search_analyzer" => "my_edge_ngram"
                     ]
                 ]],
+            "member_srl" => ["type" => "long"],
+            "email_address" => ["type" => "keyword"],
+            "tags" => [
+                "type" => "keyword",
+                "normalizer" => "my_normalizer"
+            ],
+            "tags_string" => [
+                "type" => "text",
+                "analyzer" => "my_ngram_keyword",
+                "search_analyzer" => "my_ngram_keyword"
+            ],
             "regdate" => ["type" => "date", "format" => "yyyyMMddHHmmss"],
             "ipaddress" => ["type" => "ip"],
             "list_order" => ["type" => "long"],
@@ -124,7 +147,14 @@ class ElasticSearchInstall {
 
             "user_id" => ["type" => "keyword"],
             "user_name" => ["type" => "keyword"],
-            "nick_name" => ["type" => "keyword"],
+            "nick_name" => ["type" => "keyword",
+                "fields" => [
+                    "my_edge_ngram" => [
+                        "type" => "text",
+                        "analyzer" => "my_edge_ngram",
+                        "search_analyzer" => "my_edge_ngram"
+                    ]
+                ]],
             "member_srl" => ["type" => "long"],
             "email_address" => ["type" => "keyword"],
             "homepage" => ["type" => "keyword"],
@@ -140,7 +170,6 @@ class ElasticSearchInstall {
             "doc_category_srl" => ["type" => "long"],
             "doc_status" => ["type" => "keyword"]
         ],
-
         "files" => [
             "file_srl" => ["type" => "long"],
             "upload_target_srl" => ["type" => "long"],
@@ -388,6 +417,9 @@ class ElasticSearchDocumentImporter extends ElasticSearchBaseImporter {
                 foreach(get_object_vars($each) as $key=>$val) {
                     $document[$key] = $val;
                 }
+
+                $document['tags'] = $each->tags ? explode(',', $each->tags) : array();
+                $document['tags_string'] = $each->tags;
 
                 $paramsArray['body'][] = $docIndex;
                 $paramsArray['body'][] = $document;
