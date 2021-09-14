@@ -2006,7 +2006,7 @@ class elasticsearchModel extends elasticsearch
                 } else if($search_target === "content") {
                     $params['body']['query']['bool']['must'][] = ["match_phrase" => ["content.my_ngram" => $search_keyword]];
                 } else if($search_target === "tag") {
-                    $params['body']['query']['bool']['must'][] = ["match_phrase" => ["tags.my_ngram" => $search_keyword]];
+                    $params['body']['query']['bool']['must'][] = ["match_phrase" => ["tags_string" => $search_keyword]];
                 } else {
                     $params['body']['query']['bool']['must'][] = ["match_phrase" => ["title.my_ngram" => $search_keyword]];
                 }

@@ -5,9 +5,9 @@
 	</grants>
 	<actions>
 		        <action name="EIS" type="view" meta-noindex="true" />
-		        <action name="dispElasticsearchAdminModuleConfig" type="view" />
-		        <action name="dispElasticsearchAdminOtherSetting" type="view" />
-		        <action name="dispElasticsearchAdminIndexList" type="view" admin_index="true" />
+		        <action name="dispElasticsearchAdminModuleSetting" type="view" admin_index="true" />
+		        <action name="dispElasticsearchAdminSkinInfo" type="view" />
+		        <action name="dispElasticsearchAdminIndexList" type="view" />
 		        <action name="dispElasticsearchAdminIndexState" type="view" />
 		        <action name="dispElasticsearchAdminIndexMapping" type="view" />
 		        <action name="dispElasticsearchAdminIndexSetting" type="view" />
@@ -26,6 +26,7 @@
 		        <action name="procElasticsearchAdminIndexFileManage" type="controller" />
 		        <action name="procElasticsearchAdminIndexRefreshInterval" type="controller" />
 		        <action name="procElasticsearchAdminModuleSetting" type="controller" />
+		        <action name="procElasticsearchAdminInsertSkin" type="controller" />
 		        <action name="procElasticsearchAdminIndexRemapping" type="controller" />
 		        <action name="procElasticsearchAdminErrorLogDelete" type="controller" />
 		        <action name="procElasticsearchAdminErrorLogDeleteAll" type="controller" />

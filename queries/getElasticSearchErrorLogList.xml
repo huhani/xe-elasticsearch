@@ -6,6 +6,13 @@
         <column name="*" />
     </columns>
     <conditions>
+        <condition operation="like" column="act" var="s_act" />
+        <condition operation="like" column="params" var="s_params" pipe="or" />
+        <condition operation="like" column="error" var="s_error" pipe="or" />
+        <condition operation="like" column="request_uri" var="s_request_uri" pipe="or" />
+        <condition operation="equal" column="type" var="s_type" pipe="or" />
+        <condition operation="equal" column="member_srl" var="s_member_srl" pipe="or" />
+        <condition operation="equal" column="ipaddress" var="s_ipaddress" pipe="or" />
     </conditions>
     <navigation>
         <index var="sort_index" default="error_id" order="order_type" />

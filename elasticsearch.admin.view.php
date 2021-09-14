@@ -219,7 +219,7 @@ class elasticsearchAdminView extends elasticsearch
     function dispElasticsearchAdminIndexDocumentDetail() {
         $oElasticsearchModel = getModel('elasticsearch');
         $target_index = Context::get('target_index');
-        $id = Context::get('_id'); // 그냥 id를 사용했다간 충돌발생을 대비
+        $id = Context::get('_id');
 
         $result = $oElasticsearchModel->getIndexDocument($target_index, $id);
         Context::set('result', $result);
@@ -227,7 +227,7 @@ class elasticsearchAdminView extends elasticsearch
         $this->setTemplateFile('documentDetail');
     }
 
-    function dispElasticsearchAdminOtherSetting() {
+    function dispElasticsearchAdminModuleSetting() {
         $oElasticsearchModel = getModel('elasticsearch');
         $oModuleModel = getModel('module');
         $config = $oElasticsearchModel->getModuleConfig();
@@ -246,13 +246,19 @@ class elasticsearchAdminView extends elasticsearch
         $page = Context::get('page');
         $oElasticsearchAdminModel = getAdminModel('elasticsearch');
 
+        $searchColumnList = array('type', 'act', 'params', 'error', 'request_uri', 'member_srl', 'ipaddress');
         $args = new stdClass();
         $args->page = $page;
         $args->page_count = 30;
+        if(in_array($search_target, $searchColumnList) && $search_keyword) {
+            $args->{"s_".$search_target} = $search_keyword;
+        }
         $output = $oElasticsearchAdminModel->getErrorLogList($args);
         if(!$output->toBool()) {
             return $output;
         }
+
+        Context::set('searchColumnList', $searchColumnList);
         Context::set('errorList', $output->data);
         Context::set('total_count', $output->total_count);
         Context::set('page_navigation', $output->page_navigation);
@@ -277,6 +283,34 @@ class elasticsearchAdminView extends elasticsearch
 
         $this->setTemplateFile('errorLogDetail');
     }
+
+    function dispElasticsearchAdminSkinInfo() {
+        $oModuleModel = getModel('module');
+        $oElasticsearchModel = getModel('elasticsearch');
+        $config = $oElasticsearchModel->getModuleConfig();
+        $skin_info = $oModuleModel->loadSkinInfo($this->module_path, $config->skin);
+        $skin_vars = unserialize($config->skin_vars);
+        if(count($skin_info->extra_vars))
+        {
+            foreach($skin_info->extra_vars as $key => $val)
+            {
+                $name = $val->name;
+                $type = $val->type;
+                $value = $skin_vars->{$name};
+                if($type=="checkbox"&&!$value) $value = array();
+                $skin_info->extra_vars[$key]->value= $value;
+            }
+        }
+        Context::set('skin_info', $skin_info);
+        Context::set('skin_vars', $skin_vars);
+        Context::set('module_info', unserialize($config->skin_vars));
+
+        $security = new Security();
+        $security->encodeHTML('skin_info...');
+
+        $this->setTemplateFile("skinInfo");
+    }
+
 
     private function prettyPrint($json)
     {

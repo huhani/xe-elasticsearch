@@ -238,8 +238,8 @@ class elasticsearchAdminController extends elasticsearch
         $config->search_target_module_srl = Context::get('search_target_module_srl');
         if(!$config->search_target_module_srl) $config->search_target_module_srl = '';
         $config->search_target_list = $new_search_target_list;
-        $config->skin = Context::get('skin');
         $config->search_module_target = Context::get('search_module_target');
+        $config->skin = Context::get('skin');
         $config->skin_vars = $conf->skin_vars;
 
         $output = $oModuleController->updateModuleConfig('elasticsearch', $config);
@@ -249,8 +249,41 @@ class elasticsearchAdminController extends elasticsearch
         }
 
         $this->setMessage('success_saved');
-        $returnUrl = Context::get('success_return_url') ? Context::get('success_return_url') : getNotEncodedUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminOtherSetting');
+        $returnUrl = Context::get('success_return_url') ? Context::get('success_return_url') : getNotEncodedUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminModuleSetting');
         $this->setRedirectUrl($returnUrl);
+    }
+
+    function procElasticsearchAdminInsertSkin() {
+
+        $oElasticsearchModel = getModel('elasticsearch');
+        // Get configurations (using module model object)
+        $oModuleModel = getModel('module');
+        $config = $oElasticsearchModel->getModuleConfig();
+
+        $args = new stdClass;
+        $args->skin = $config->skin;
+        $args->use_alternate_search = $config->use_alternate_search;
+        $args->use_search_after = $config->use_search_after;
+        $args->search_target_list = $config->search_target_list;
+        $args->search_target_module_srl = $config->search_target_module_srl;
+        $args->search_module_target = $config->search_module_target;
+
+        // Check received variables (delete the basic variables such as mo, act, module_srl, page)
+        $obj = Context::getRequestVars();
+        unset($obj->act);
+        unset($obj->module_srl);
+        unset($obj->page);
+
+        // Serialize and save
+        $args->skin_vars = serialize($obj);
+
+        $oModuleController = getController('module');
+        $output = $oModuleController->insertModuleConfig('elasticsearch', $args);
+
+        $this->setMessage('success_updated', 'info');
+
+        $returnUrl = Context::get('success_return_url') ? Context::get('success_return_url') : getNotEncodedUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminSkinInfo');
+        return $this->setRedirectUrl($returnUrl, $output);
     }
 
     function procElasticsearchAdminIndexRemapping() {

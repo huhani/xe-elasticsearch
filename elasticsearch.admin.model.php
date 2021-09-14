@@ -1145,13 +1145,14 @@ class elasticsearchAdminModel extends elasticsearch
     }
 
     function getErrorLogList($obj) {
-        $page = isset($obj->page) ? $obj->page : 1;
-        $args = new stdClass();
-        $args->page = $page;
-        $args->sort_index = "error_id";
-        $args->order_type = "desc";
+        if(!$obj) {
+            $obj = new stdClass();
+        }
+        $obj->page = isset($obj->page) ? $obj->page : 1;
+        $obj->sort_index = "error_id";
+        $obj->order_type = "desc";
 
-        $output = executeQueryArray('elasticsearch.getElasticSearchErrorLogList', $args);
+        $output = executeQueryArray('elasticsearch.getElasticSearchErrorLogList', $obj);
 
         return $output;
     }

@@ -5,7 +5,9 @@
 </div>
 
 <ul class="x_nav x_nav-tabs">
-
+	<li class="x_active"|cond="$act == 'dispElasticsearchAdminModuleSetting'">
+		<a href="{getUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminModuleSetting')}">모듈 설정</a>
+	</li>
 	<li class="x_active"|cond="in_array($act, array('dispElasticsearchAdminIndexList', 'dispElasticsearchAdminIndexState', 'dispElasticsearchAdminIndexMapping', 'dispElasticsearchAdminIndexSetting', 'dispElasticsearchAdminIndexSettingView'))">
 		<a href="{getUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminIndexList')}">인덱스 목록</a>
 	</li>
@@ -15,7 +17,7 @@
 	<li class="x_active"|cond="$act == 'dispElasticsearchAdminErrorLogList'">
 		<a href="{getUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminErrorLogList')}">에러 로그</a>
 	</li>
-	<li class="x_active"|cond="$act == 'dispElasticsearchAdminOtherSetting'">
-		<a href="{getUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminOtherSetting')}">기타</a>
+	<li class="x_active"|cond="$act == 'dispElasticsearchAdminSkinInfo'">
+		<a href="{getUrl('', 'module', 'admin', 'act', 'dispElasticsearchAdminSkinInfo')}">통합검색 스킨 관리</a>
 	</li>
 </ul>
