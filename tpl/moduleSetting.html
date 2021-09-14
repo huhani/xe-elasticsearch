@@ -112,6 +112,49 @@
     </form>
 
     <section class="section">
+        <h1>서버 정보</h1>
+        <div class="x_control-group">
+            <label class="x_control-label" for="es_host">host</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="text" value="{$dbInfo->host}" name="es_host" id="es_host" readonly="readonly" style="width:150px;">
+                <a href="#es_host_help" class="x_icon-question-sign" data-toggle="">도움말</a>
+                <p id="es_host_help" class="x_help-block" hidden="">엘라스틱 서치 서버 IP입니다. <BR>
+                값을 변경해야 할 경우 elasticsearch.model.php -> elasticsearchModel 클래스 -> private static $host 값을 수정하세요.</p>
+            </div>
+        </div>
+
+        <div class="x_control-group">
+            <label class="x_control-label" for="es_port">port</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="number" value="{$dbInfo->port}" name="es_port" id="es_port" readonly="readonly" style="width:100px;">
+                <a href="#es_port_help" class="x_icon-question-sign" data-toggle="">도움말</a>
+                <p id="es_port_help" class="x_help-block" hidden="">엘라스틱 서치 서버 Port 번호입니다.  <BR>
+                    값을 변경해야 할 경우 elasticsearch.model.php -> elasticsearchModel 클래스 -> private static $port 값을 수정하세요.</p>
+            </div>
+        </div>
+
+        <div class="x_control-group">
+            <label class="x_control-label" for="es_prefix">host</label>
+            <div class="x_controls" style="padding-top:3px">
+                <input type="text" value="{$dbInfo->prefix}" name="es_host" id="es_prefix" readonly="readonly" style="width:150px;">
+                <a href="#es_prefix_help" class="x_icon-question-sign" data-toggle="">도움말</a>
+                <p id="es_prefix_help" class="x_help-block" hidden="">엘라스틱 서치 서버 prefix 값입니다.  <BR>
+                    값을 변경해야 할 경우 elasticsearch.model.php -> elasticsearchModel 클래스 -> private static $prefix 값을 수정하세요.</p>
+            </div>
+        </div>
+
+        <div class="x_control-group">
+            <label class="x_control-label">status</label>
+            <div class="x_controls" style="padding-top:3px">
+                <span>{$dbInfo->isAvailable ? "running" : "stop"}</span>
+                <a href="#es_status_help" class="x_icon-question-sign" data-toggle="">도움말</a>
+                <p id="es_status_help" class="x_help-block" hidden="">엘라스틱 서치 서버 상태를 나타냅니다. running 상태여야 모듈이 정상적으로 작동합니다.</p>
+            </div>
+        </div>
+    </section>
+
+
+    <section class="section">
         <h1>인덱스 설정</h1>
         <div class="x_control-group">
             <label class="x_control-label">인덱스 재생성</label>

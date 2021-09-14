@@ -10,6 +10,7 @@ class elasticsearchView extends elasticsearch
     }
 
 
+    // integration_search.view의 IS 참조
     function EIS()
     {
         $oFile = getClass('file');

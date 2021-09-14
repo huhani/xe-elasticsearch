@@ -841,7 +841,7 @@ class elasticsearchAdminModel extends elasticsearch
         $oElasticsearchModel = getModel('elasticsearch');
         $oElasticsearchController = getController('elasticsearch');
         $client = $oElasticsearchModel::getElasticEngineClient();
-        $compression = 50;
+        $compression = 200;
         if($total_count === -1) {
             $total_count = $this->getIndexDocumentSearchCount($obj);
         }

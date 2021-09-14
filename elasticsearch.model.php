@@ -315,7 +315,7 @@ class elasticsearchModel extends elasticsearch
 
     function getIndexDocumentApproximatedOffset($obj, $total_count = -1) {
         $oElasticsearchController = getController('elasticsearch');
-        $compression = 50;
+        $compression = 200;
         if($total_count === -1) {
             $total_count = $this->getIndexDocumentSearchCount($obj);
         }
@@ -1767,7 +1767,7 @@ class elasticsearchModel extends elasticsearch
     function getIntegrationSearchApproximatedOffset($obj, $params, $total_count = -1) {
         $oElasticsearchController = getController('elasticsearch');
         $client = self::getElasticEngineClient();
-        $compression = 50;
+        $compression = 200;
         if($total_count === -1) {
             $total_count = $this->getIntegrationSearchCount($obj, $params);
         }
@@ -1820,7 +1820,6 @@ class elasticsearchModel extends elasticsearch
 
     function getIntegrationSearchAfterOffset($obj, $params, $total_count = -1) {
         $oElasticsearchController = getController('elasticsearch');
-        $chunkSize = 10000;
         if($total_count === -1) {
             $total_count = $this->getIntegrationSearchCount($params);
         }
@@ -2309,7 +2308,19 @@ class elasticsearchModel extends elasticsearch
 
         return false;
     }
-    
+
+    function getPort() {
+        return self::$port;
+    }
+
+    function getHost() {
+        return self::$host;
+    }
+
+    function getPrefix() {
+        return self::$prefix;
+    }
+
     function _getLastItem($params, $diff, $approximatedOffset, $sort_index, $order_type) {
         if(!isset($params['index'])) {
             return null;
@@ -2318,7 +2329,7 @@ class elasticsearchModel extends elasticsearch
         $oElasticsearchController = getController('elasticsearch');
         $count = abs($diff) + ($diff < 0 ? 1 : 0);
         $leftCount = $count;
-        $chunkCount = 3;
+        $chunkCount = 10000;
         $nextOffset = $approximatedOffset;
         while($leftCount > 0) {
             $eachCount = $leftCount > $chunkCount ? $chunkCount : $leftCount;
@@ -2410,10 +2421,6 @@ class elasticsearchModel extends elasticsearch
             return;
         }
 
-        $prefix = self::getElasticEnginePrefix();
-        if($prefix) {
-            $prefix .= "_";
-        }
         $module_srl = $obj->module_srl;
         $exclude_module_srl = $obj->exclude_module_srl;
         $category_srl = $obj->category_srl;

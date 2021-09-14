@@ -11,7 +11,6 @@ class elasticsearchAdminView extends elasticsearch
         $this->setTemplatePath($this->module_path.'tpl');
     }
 
-
     function dispElasticsearchAdminDebugSetting() {
 
     }
@@ -233,11 +232,22 @@ class elasticsearchAdminView extends elasticsearch
         $config = $oElasticsearchModel->getModuleConfig();
         $skin_list = $oModuleModel->getSkins($this->module_path);
 
+        $port = $oElasticsearchModel->getPort();
+        $host = $oElasticsearchModel->getHost();
+        $prefix = $oElasticsearchModel->getPrefix();
+        $dbInfo = new stdClass();
+        $dbInfo->port = $port;
+        $dbInfo->host = $host;
+        $dbInfo->prefix = $prefix;
+        $dbInfo->isAvailable = $oElasticsearchModel->isServerAvailable();
+
         Context::set('config', $config);
+        Context::set('dbInfo', $dbInfo);
+
         Context::set('skin_list', $skin_list);
         Context::set('moduleConfig', $config);
         Context::set('sample_code', htmlspecialchars('<form action="{getUrl()}" method="get"><input type="hidden" name="vid" value="{$vid}" /><input type="hidden" name="mid" value="{$mid}" /><input type="hidden" name="act" value="EIS" /><input type="text" name="is_keyword"  value="{$is_keyword}" /><input class="btn" type="submit" value="{$lang->cmd_search}" /></form>', ENT_COMPAT | ENT_HTML401, 'UTF-8', false) );
-        $this->setTemplateFile('otherSetting');
+        $this->setTemplateFile('moduleSetting');
     }
 
     function dispElasticsearchAdminErrorLogList() {
@@ -284,6 +294,7 @@ class elasticsearchAdminView extends elasticsearch
         $this->setTemplateFile('errorLogDetail');
     }
 
+    // integration_search.admin.view의 dispIntegration_searchAdminSkinInfo 참조
     function dispElasticsearchAdminSkinInfo() {
         $oModuleModel = getModel('module');
         $oElasticsearchModel = getModel('elasticsearch');
@@ -311,7 +322,7 @@ class elasticsearchAdminView extends elasticsearch
         $this->setTemplateFile("skinInfo");
     }
 
-
+    // https://stackoverflow.com/questions/6054033/pretty-printing-json-with-php
     private function prettyPrint($json)
     {
         $result = '';
