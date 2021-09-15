@@ -23,10 +23,10 @@ mysql 엔진 기반 db에서 게시글 검색 및 통합 검색 속도 향상을
 # 2. 설치
 ## 2.1. 설치 환경
 
-### 2.2.1. H/W 최소사양
+### 2.1.1. H/W 최소사양
 https://www.elastic.co/guide/en/elasticsearch/guide/current/hardware.html
 
-### 2.2.1. S/W 환경
+### 2.1.2. S/W 환경
     - Elasticsearch 7.14 버전 이상
     - php 7.4 이상, php-curl 설치
     - php composer 사용이 가능해야 함
