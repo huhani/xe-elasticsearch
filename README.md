@@ -33,7 +33,7 @@ https://www.elastic.co/guide/en/elasticsearch/guide/current/hardware.html
     - XE 1.11.6 (라이믹스 미지원)
     - MySQL(MariaDB)
 
-##2.2. 설치
+## 2.2. 설치
 상기 기술된 설치방법은 서버의 규모나 구성에 따라 달라질 수 있습니다.   
 설정 내용은 엘라스틱서치 7.14 버전, Ubuntu 환경을 기준으로 작성되었습니다.
 
