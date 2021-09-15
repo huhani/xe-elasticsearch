@@ -22,11 +22,12 @@ mysql 엔진 기반 db에서 게시글 검색 및 통합 검색 속도 향상을
     5. 실시간 검색어 순위, 연관 검색어, 자동완성 미구현 (이걸 구현하려면 일이 너무 커진다)
     
 # 2. 설치
-##2.1. 설치 환경
-###2.2.1. H/W 최소사양
+## 2.1. 설치 환경
+
+### 2.2.1. H/W 최소사양
 https://www.elastic.co/guide/en/elasticsearch/guide/current/hardware.html
 
-###2.2.1. S/W 환경
+### 2.2.1. S/W 환경
     - Elasticsearch 7.14 버전 이상
     - php 7.4 이상, php-curl 설치
     - php composer 사용이 가능해야 함
@@ -37,12 +38,13 @@ https://www.elastic.co/guide/en/elasticsearch/guide/current/hardware.html
 상기 기술된 설치방법은 서버의 규모나 구성에 따라 달라질 수 있습니다.   
 설정 내용은 엘라스틱서치 7.14 버전, Ubuntu 환경을 기준으로 작성되었습니다.
 
-###2.2.1. elasticsearch 설치
+### 2.2.1. elasticsearch 설치
 * Debian 계열 : https://www.elastic.co/guide/en/elasticsearch/reference/current/deb.html   
 * RedHat 계열 : https://www.elastic.co/guide/en/elasticsearch/reference/current/rpm.html
 
-###2.2.2. elasticsearch 환경설정
-####2.2.2.1 elasticsearch.yml 설정
+### 2.2.2. elasticsearch 환경설정
+
+#### 2.2.2.1 elasticsearch.yml 설정
 ElasticSearch 서버에 사용할 아이피, 명칭, 데이터 경로 등을 설정합니다.   
 처음 elasticsearch를 설치하였을땐 elasticsearch.yml 파일의 모든 설정이 주석처리가 되어있습니다.
 elasticsearch.yml 설정 예제 파일: [Link][yml_link]   
@@ -66,7 +68,7 @@ action.destructive_requires_name: true
 
 
 
-####2.2.2.2 jvm.options 수정
+#### 2.2.2.2 jvm.options 수정
 /etc/elasticsearch/jvm.options 파일을 수정하여 OOM(Out Of Memory)발생으로 ElasticSearch 서버가 뻗어버리지 않도록 설정.   
 Heap 사이즈는 컴퓨터 RAM의 50%로 할당.    
 아래 예제는 RAM이 8GB인 서버에서 Heap 용량을 4GB로 설정할때의 값임.   
@@ -78,21 +80,21 @@ jvm.options 설정 예제 파일: [Link][jvm_options_link]
 -Xmx4g
 ```
 
-###2.2.3 elasticsearch 서비스 실행
+### 2.2.3 elasticsearch 서비스 실행
 Debian 계열 : https://www.elastic.co/guide/en/elasticsearch/reference/current/starting-elasticsearch.html#start-es-deb-init   
 RedHat 계열 : https://www.elastic.co/guide/en/elasticsearch/reference/current/starting-elasticsearch.html#start-rpm
 
 
-###2.2.4. elasticsearch-php 설치 (composer 사용)
+### 2.2.4. elasticsearch-php 설치 (composer 사용)
 https://github.com/elastic/elasticsearch-php#installation-via-composer   
 composer.json 파일은 xe 사이트의 최상단(index.php가 있는곳)에 위치함.   
 composer.json 파일이 없는 경우 별도로 생성해야 하며, elasticsearch-php가 정상적으로 설치된 경우 /vendor/elassticsearch 폴더(를 포함한 다수)가 생성됨.
 
 
-###2.2.5. xe-elasticsearch 모듈 설치
+### 2.2.5. xe-elasticsearch 모듈 설치
 /modules/elasticsearch에 상기 github에 있는 파일들을 설치한다.
 
-####2.2.5.1 xe-elasticsearch 모듈 설정
+#### 2.2.5.1 xe-elasticsearch 모듈 설정
 파일 설치후 엘라스틱서치 서버로 통신하기 위한 기본정보 입력.   
 1. modules/elasticsearch/elasticsearch.model.php 파일에 있는 elasticsearchModel 클래스의 static으로 설정된 $host, $port, $prefix 변수의 값을 입력.   
  $prefix 값은 기본값인 "es"로 사용하여도 문제없음. 만약 다른 사이트에서 같은 ElasticSearch를 사용하게 된다면 필히 접두어를 사이트마다 다르게 해야함.
@@ -102,7 +104,7 @@ composer.json 파일이 없는 경우 별도로 생성해야 하며, elasticsear
 3. 서버의 /index.php?module=admin&act=dispElasticsearchAdminModuleSetting 주소로 접속하여 "서버 정보" 항목의 status값이 running 상태인지 확인.   
 running이 아닌 경우 연동이 제대로 되지 않은 상태임.
 
-####2.2.5.2 데이터 인덱싱
+#### 2.2.5.2 데이터 인덱싱
 데이터 인덱싱은 php-cli를 이용하여 작업한다.   
 /modules/elasticsearch/cli 위치로 이동 후 아래의 명령어를 이용하여 데이터 인덱싱 작업을 시작한다.
 ```
@@ -114,4 +116,3 @@ php setup.php
 
 - XE admin -> Elasticsearch 모듈 설정 -> 인덱스 목록에서 documents, commets, files 문서 갯수(docs.count)가 실제 문서, 댓글, 파일 갯수와 일치하는지 확인.
 - 실제 게시판 내의 검색을 테스트하여 속도향상이 이루어졌는지 확인.
-
