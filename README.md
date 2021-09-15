@@ -9,12 +9,12 @@ mysql 엔진 기반 db에서 게시글 검색 및 통합 검색 속도 향상을
 아파치 루씬 기반의 검색엔진인 Elasticsearch를 이용하여 기존 RDBMS의 Full-text search보다 빠른 속도로 검색을 지원합니다.
 
 ## 1.3. 장점 및 주의사항
-### 1.3.1 장점
+### 1.3.1. 장점
     1. 빠른 속도의 인덱싱 지원
     2. 페이지 분할(계속 검색) 없이 연속적인 페이징 지원
     3. 통합검색 지원
     4. 기존DB(mysql)의 조작 불필요
-### 1.3.1 단점
+### 1.3.1. 단점
     1. 데이터 무결성 가능성 있음 (예: 게시글 개수 오차)
     2. 검색결과 정렬은 문서번호, 등록일 순으로만 가능
     3. score순(정확도순) 기능 미구현
@@ -44,7 +44,7 @@ https://www.elastic.co/guide/en/elasticsearch/guide/current/hardware.html
 
 ### 2.2.2. elasticsearch 환경설정
 
-#### 2.2.2.1 elasticsearch.yml 설정
+#### 2.2.2.1. elasticsearch.yml 설정
 ElasticSearch 서버에 사용할 아이피, 명칭, 데이터 경로 등을 설정합니다.   
 처음 elasticsearch를 설치하였을땐 elasticsearch.yml 파일의 모든 설정이 주석처리가 되어있습니다.
 elasticsearch.yml 설정 예제 파일: [Link][yml_link]   
@@ -68,7 +68,7 @@ action.destructive_requires_name: true
 
 
 
-#### 2.2.2.2 jvm.options 수정
+#### 2.2.2.2. jvm.options 수정
 /etc/elasticsearch/jvm.options 파일을 수정하여 OOM(Out Of Memory)발생으로 ElasticSearch 서버가 뻗어버리지 않도록 설정.   
 Heap 사이즈는 컴퓨터 RAM의 50%로 할당.    
 아래 예제는 RAM이 8GB인 서버에서 Heap 용량을 4GB로 설정할때의 값임.   
@@ -80,7 +80,7 @@ jvm.options 설정 예제 파일: [Link][jvm_options_link]
 -Xmx4g
 ```
 
-### 2.2.3 elasticsearch 서비스 실행
+### 2.2.3. elasticsearch 서비스 실행
 Debian 계열 : https://www.elastic.co/guide/en/elasticsearch/reference/current/starting-elasticsearch.html#start-es-deb-init   
 RedHat 계열 : https://www.elastic.co/guide/en/elasticsearch/reference/current/starting-elasticsearch.html#start-rpm
 
@@ -94,7 +94,7 @@ composer.json 파일이 없는 경우 별도로 생성해야 하며, elasticsear
 ### 2.2.5. xe-elasticsearch 모듈 설치
 /modules/elasticsearch에 상기 github에 있는 파일들을 설치한다.
 
-#### 2.2.5.1 xe-elasticsearch 모듈 설정
+#### 2.2.5.1. xe-elasticsearch 모듈 설정
 파일 설치후 엘라스틱서치 서버로 통신하기 위한 기본정보 입력.   
 1. modules/elasticsearch/elasticsearch.model.php 파일에 있는 elasticsearchModel 클래스의 static으로 설정된 $host, $port, $prefix 변수의 값을 입력.   
  $prefix 값은 기본값인 "es"로 사용하여도 문제없음. 만약 다른 사이트에서 같은 ElasticSearch를 사용하게 된다면 필히 접두어를 사이트마다 다르게 해야함.
@@ -104,7 +104,7 @@ composer.json 파일이 없는 경우 별도로 생성해야 하며, elasticsear
 3. 서버의 /index.php?module=admin&act=dispElasticsearchAdminModuleSetting 주소로 접속하여 "서버 정보" 항목의 status값이 running 상태인지 확인.   
 running이 아닌 경우 연동이 제대로 되지 않은 상태임.
 
-#### 2.2.5.2 데이터 인덱싱
+#### 2.2.5.2. 데이터 인덱싱
 데이터 인덱싱은 php-cli를 이용하여 작업한다.   
 /modules/elasticsearch/cli 위치로 이동 후 아래의 명령어를 이용하여 데이터 인덱싱 작업을 시작한다.
 ```
