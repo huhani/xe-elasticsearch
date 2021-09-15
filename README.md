@@ -44,7 +44,7 @@ https://www.elastic.co/guide/en/elasticsearch/guide/current/hardware.html
 ### 2.2.2. elasticsearch 환경설정
 
 #### 2.2.2.1. elasticsearch.yml 설정
-ElasticSearch 서버에 사용할 아이피, 명칭, 데이터 경로 등을 설정합니다.   
+/etc/elasticsearch/elasticsearch.yml 파일을 수정하여 ElasticSearch 서버에 사용할 아이피, 명칭, 데이터 경로 등을 설정합니다.   
 처음 elasticsearch를 설치하였을땐 elasticsearch.yml 파일의 모든 설정이 주석처리가 되어있습니다.
 elasticsearch.yml 설정 예제 파일: [Link][yml_link]   
 
