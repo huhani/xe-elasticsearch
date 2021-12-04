@@ -13,7 +13,7 @@ class ElasticSearchClientConnector {
 
     private $host = null;
     private $port = null;
-    private $prefix = "";
+    private $prefix = null;
     private $client = null;
 
     function __construct($host, $port, $prefix = "")
@@ -39,9 +39,13 @@ class ElasticSearchClientConnector {
 class elasticsearchModel extends elasticsearch
 {
 
+    // !!!!!!!!!!!!!!!!!!!!!!!! 여기 값들을 알맞게 수정해주세요.
     private static $host = "127.0.0.1";
     private static $port = 9200;
     private static $prefix = "es";
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
     private static $client = null;
 
     function init()

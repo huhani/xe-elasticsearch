@@ -14,27 +14,26 @@ class elasticsearch extends ModuleObject
         array( 'document.insertDocument',	'elasticsearch',	'controller',	'triggerAfterInsertDocument',       'after'	),
         array( 'document.updateDocument',	'elasticsearch',	'controller',	'triggerAfterUpdateDocument',      'after'	),
         array( 'document.deleteDocument',	'elasticsearch',	'controller',	'triggerAfterDeleteDocument',      'after'	),
-
         array( 'document.moveDocumentModule',	'elasticsearch',	'controller',	'triggerBeforeMoveDocumentModule',      'before'	),
-
-
         array( 'document.moveDocumentModule',	'elasticsearch',	'controller',	'triggerAfterMoveDocumentModule',      'after'	),
         array( 'document.moveDocumentToTrash',	'elasticsearch',	'controller',	'triggerAfterTrashDocument',      'after'	),
         array( 'document.restoreTrash',      	'elasticsearch',	'controller',	'triggerAfterRestoreTrashDocument',      'after'	),
-
         array( 'document.copyDocumentModule',      	'elasticsearch',	'controller',	'triggerBeforeCopyDocument',      'before'	),
         array( 'document.copyDocumentModule',      	'elasticsearch',	'controller',	'triggerAfterCopyDocument',      'after'	),
-
-
         array( 'document.getDocumentList',	'elasticsearch',	'controller',	'triggerBeforeGetDocumentList',      'before'	),
         array( 'comment.insertComment',		'elasticsearch',	'controller',	'triggerAfterInsertComment',       'after'	),
         array( 'comment.updateComment',		'elasticsearch',	'controller',	'triggerAfterUpdateComment',       'after'	),
         array( 'comment.deleteComment',		'elasticsearch',	'controller',	'triggerAfterDeleteComment',       'after'	),
+        array( 'comment.copyCommentByDocument',		'elasticsearch',	'controller',	'triggerAddCopyComment',       'add'	),
+
         array( 'file.insertFile',		'elasticsearch',	'controller',	'triggerAfterInsertFile',       'after'	),
         array( 'file.deleteFile',		'elasticsearch',	'controller',	'triggerAfterInsertDelete',       'after'	),
         array( 'moduleHandler.init',			'elasticsearch',	'controller',	'triggerBeforeModuleInit',				'before'	),
         array( 'moduleHandler.proc',			'elasticsearch',	'controller',	'triggerAfterModuleProc',				'after'	),
         array( 'module.deleteModule',			'elasticsearch',	'controller',	'triggerDeleteModuleData',				'before'	)
+
+
+
     );
 
     function moduleInstall()

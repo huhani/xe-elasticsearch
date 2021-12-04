@@ -576,7 +576,7 @@ class ElasticSearchFileImporter extends ElasticSearchBaseImporter {
                     ($each->doc_user_id ? $each->doc_user_id :
                         ($each->cmt_user_id ? $each->cmt_user_id : null));
                 $doc_status = $each->doc_status ? $each->doc_status :
-                    ($each->_doc_status ? $each->_doc_status : null);
+                    ($each->doc_status2 ? $each->doc_status2 : null);
                 $extension = pathinfo($each->source_filename, PATHINFO_EXTENSION);
                 if($extension && strlen($extension) > 0) {
                     $extension = strtolower($extension);
@@ -593,7 +593,7 @@ class ElasticSearchFileImporter extends ElasticSearchBaseImporter {
                 unset($file['doc_nick_name']);
                 unset($file['doc_user_id']);
                 unset($file['doc_nick_name']);
-                unset($file['_doc_status']);
+                unset($file['doc_status2']);
                 $file['document_srl'] = $each_document_srl;
                 $file['comment_srl'] = $each_comment_srl;
                 $file['nick_name'] = $each_nick_name;

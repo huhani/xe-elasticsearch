@@ -97,10 +97,10 @@ class elasticsearchController extends elasticsearch
     }
 
     function triggerAfterMoveDocumentModule(&$obj) {
-        $document_srls = $obj->document_srls;
+        $document_srls = $obj->document_srls; // xe에선 string형태로, rx 2.0에선 array형태로 전달됨
         $module_srl = $obj->module_srl;
         $category_srl = $obj->category_srl;
-        $document_srls = explode(",", $document_srls);
+        $document_srls = is_array($document_srls) ? $obj->document_srls : explode(",", $document_srls);
         if(!count($document_srls)) {
             return;
         }
@@ -144,16 +144,36 @@ class elasticsearchController extends elasticsearch
     function triggerAfterCopyDocument(&$obj) {
         $this->unsetFlag("copyDocumentModule");
         $this->setFlag("copyDocumentModuleAfter", $obj);
+        debugPrint($obj);
+    }
+
+    // for RX 2.0
+    function triggerAddCopyComment(&$obj) {
+        if($obj && isset($obj->copied)) {
+            $dataList = $this->getFlag('addCopyCommentList');
+            if(!$dataList) {
+                $dataList = [];
+            }
+            $dataList[] = $obj->copied;
+            $this->setFlag('addCopyCommentList', $dataList);
+            $this->insertComment($obj->copied);
+        }
     }
 
     function triggerAfterModuleProc() {
         $target_srls = array();
+        $copyCommentFlag = $this->getFlag('addCopyCommentList');
         $copyFlag = $this->getFlag("copyDocumentModuleAfter");
         $moveFlag = $this->getFlag("moveDocumentModuleAfter");
         if($copyFlag) {
             $target_srls = $copyFlag->copied_srls;
         } else if($moveFlag) {
-            $target_srls = explode(",", $moveFlag->document_srls);
+            $target_srls = is_array($moveFlag->document_srls) ? $moveFlag->document_srls : explode(",", $moveFlag->document_srls);
+        }
+        if($copyCommentFlag) {
+            foreach ($copyCommentFlag as $each) {
+                $this->insertComment($each);
+            }
         }
         if(count($target_srls) > 0) {
             $this->insertFileByDocumentSrls($target_srls);
@@ -661,7 +681,7 @@ class elasticsearchController extends elasticsearch
                             ($each->doc_user_id ? $each->doc_user_id :
                                 ($each->cmt_user_id ? $each->cmt_user_id : null));
                         $doc_status = $each->doc_status ? $each->doc_status :
-                            ($each->_doc_status ? $each->_doc_status : null);
+                            ($each->doc_status2 ? $each->doc_status2 : null);
                         $extension = pathinfo($each->source_filename, PATHINFO_EXTENSION);
                         if($extension && strlen($extension) > 0) {
                             $extension = strtolower($extension);
@@ -678,7 +698,7 @@ class elasticsearchController extends elasticsearch
                         unset($file['doc_nick_name']);
                         unset($file['doc_user_id']);
                         unset($file['doc_nick_name']);
-                        unset($file['_doc_status']);
+                        unset($file['doc_status2']);
                         $file['document_srl'] = $each_document_srl;
                         $file['comment_srl'] = $each_comment_srl;
                         $file['nick_name'] = $each_nick_name;
@@ -782,7 +802,6 @@ class elasticsearchController extends elasticsearch
         if($prefix) {
             $prefix .= "_";
         }
-
         $params = [
             "index" => $prefix."files",
             "type" => "_doc",

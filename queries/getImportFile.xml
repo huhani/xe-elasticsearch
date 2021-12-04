@@ -16,9 +16,9 @@
                 <condition operation="equal" column="member.member_srl" default="files.member_srl" pipe="and" />
             </conditions>
         </table>
-        <table name="documents" alias="_doc" type="left join">
+        <table name="documents" alias="doc2" type="left join">
             <conditions>
-                <condition operation="equal" column="_doc.document_srl" default="comments.document_srl" pipe="and" />
+                <condition operation="equal" column="doc2.document_srl" default="comments.document_srl" pipe="and" />
             </conditions>
         </table>
     </tables>
@@ -39,7 +39,7 @@
         <column name="documents.nick_name" alias="doc_nick_name" />
         <column name="documents.user_id" alias="doc_user_id" />
         <column name="documents.status" alias="doc_status" />
-        <column name="_doc.status" alias="_doc_status" />
+        <column name="doc2.status" alias="doc_status2" />
         <column name="comments.document_srl" alias="cmt_document_srl" />
         <column name="comments.nick_name" alias="cmt_nick_name" />
         <column name="comments.user_id" alias="cmt_user_id" />
